@@ -1,0 +1,848 @@
+<title>Atelier de cartes Yu-Gi-Oh!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500&family=Kalam:wght@400&family=Spectral:ital,wght@0,400;0,600;1,400&family=Spectral+SC:wght@600;700&display=swap">
+<style>
+/* Layout: a drafting sheet (blueprint grid, as on the reference cover) — form on the left, card on the drawing board, rules check + title block on the right. Single deliberate blueprint look. */
+:root {
+  color-scheme: dark;
+  --sheet: #1f5fae;        /* blueprint ground */
+  --sheet-deep: #194f93;   /* panels */
+  --grid: rgba(255,255,255,.07);
+  --line: rgba(255,255,255,.55);
+  --line-soft: rgba(255,255,255,.22);
+  --ink: #f4f8ff;
+  --ink-dim: #b9cdea;
+  --field: #133f78;
+  --accent: #ffd34d;       /* star yellow */
+  --ok: #7ee2a8;
+  --warn: #ffd34d;
+  --err: #ff8a7a;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-note: "Kalam", "Comic Sans MS", cursive;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { background: var(--sheet); color: var(--ink); }
+body {
+  font-family: var(--font-body); font-size: 14px; line-height: 1.45;
+  padding-inline: 16px; padding-block: 20px 40px;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 20px; }
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+h1 { font-family: var(--font-display); font-weight: 900; font-size: clamp(30px, 5vw, 52px); line-height: .95; margin: 0; letter-spacing: -.02em; text-wrap: balance; }
+h1 small { display: block; font-weight: 500; font-size: 16px; letter-spacing: 0; color: var(--ink-dim); margin-top: 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+button, .btn {
+  font: 600 13px/1 var(--font-body); color: var(--ink); background: transparent;
+  border: 1.5px solid var(--line); border-radius: 3px; padding: 9px 12px; cursor: pointer;
+}
+button:hover { background: rgba(255,255,255,.08); }
+button.primary { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+button.primary:hover { background: #fff; }
+button.danger { border-color: var(--err); color: var(--err); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.board { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr) minmax(0, 330px); gap: 20px; align-items: start; }
+@media (max-width: 1100px) { .board { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .board .right { grid-column: 1 / -1; } }
+@media (max-width: 720px) { .board { grid-template-columns: minmax(0, 1fr); } .board .stage { order: -1; } }
+
+.panel { border: 1.5px solid var(--line); background: color-mix(in srgb, var(--sheet-deep) 80%, transparent); border-radius: 4px; min-width: 0; }
+.panel > h2 { margin: 0; padding: 10px 14px; font: 700 12px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; border-bottom: 1.5px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.panel .body { padding: 14px; display: grid; gap: 12px; }
+fieldset { border: 0; border-top: 1px dashed var(--line-soft); margin: 0; padding: 12px 0 0; display: grid; gap: 10px; min-width: 0; }
+fieldset:first-child { border-top: 0; padding-top: 0; }
+legend { font-family: var(--font-note); font-size: 17px; color: var(--accent); padding: 0 6px 0 0; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+label.f { display: grid; gap: 4px; font-size: 12px; color: var(--ink-dim); min-width: 0; }
+input[type=text], input[type=number], select, textarea {
+  width: 100%; min-width: 0; font: 400 14px/1.35 var(--font-body); color: var(--ink);
+  background: var(--field); border: 1px solid var(--line-soft); border-radius: 3px; padding: 8px 9px;
+}
+textarea { min-height: 110px; resize: vertical; font-family: "Spectral", Georgia, serif; font-size: 15px; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.checks { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.checks label { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; cursor: pointer; }
+input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+.hint { font-size: 12px; color: var(--ink-dim); margin: 0; }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button { padding: 7px 10px; font-size: 12px; border-color: var(--line-soft); }
+.seg button[aria-pressed=true] { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+
+.arrows { display: grid; grid-template-columns: repeat(3, 38px); gap: 4px; }
+.arrows button { width: 38px; height: 38px; padding: 0; font-size: 16px; border-color: var(--line-soft); }
+.arrows button[aria-pressed=true] { background: #e8392b; border-color: #e8392b; color: #fff; }
+.arrows .mid { border: 1px dashed var(--line-soft); border-radius: 3px; display: grid; place-items: center; font: 500 10px var(--font-mono); color: var(--ink-dim); }
+
+.stage { display: grid; gap: 14px; justify-items: center; min-width: 0; position: relative; }
+.stage .frame { position: relative; width: 100%; max-width: 440px; }
+.stage canvas { width: 100%; height: auto; display: block; filter: drop-shadow(0 18px 30px rgba(0,0,0,.35)); }
+.note { position: absolute; font-family: var(--font-note); color: var(--ink); font-size: 16px; pointer-events: none; white-space: nowrap; }
+.layers { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.layers label { font-family: var(--font-note); font-size: 16px; border: 1px solid var(--line-soft); border-radius: 20px; padding: 2px 12px 2px 8px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.drop { border: 1.5px dashed var(--line); border-radius: 4px; padding: 12px; text-align: center; font-size: 13px; cursor: pointer; }
+.drop.over { background: rgba(255,255,255,.1); }
+
+.verdict { display: flex; align-items: center; gap: 10px; font: 700 15px var(--font-display); }
+.verdict .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.issues li { display: grid; grid-template-columns: auto 1fr; gap: 8px; font-size: 13px; align-items: start; }
+.chip { font: 600 10px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; padding: 4px 6px; border-radius: 2px; color: #0d2a52; white-space: nowrap; }
+.chip.err { background: var(--err); } .chip.warn { background: var(--warn); } .chip.info { background: var(--ink-dim); } .chip.ok { background: var(--ok); }
+
+.coll { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 340px; overflow: auto; }
+.coll li { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center; padding: 7px 8px; border: 1px solid var(--line-soft); border-radius: 3px; cursor: pointer; }
+.coll li[aria-current=true] { border-color: var(--accent); }
+.coll .sw { width: 10px; height: 28px; border-radius: 1px; }
+.coll .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.coll .meta { font: 400 11px var(--font-mono); color: var(--ink-dim); }
+.coll .del { padding: 5px 7px; font-size: 11px; }
+
+table.tb { width: 100%; border-collapse: collapse; font: 400 11px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; }
+table.tb td { border: 1px solid var(--line-soft); padding: 5px 7px; vertical-align: top; }
+table.tb .k { display: block; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-dim); }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--sheet); font-weight: 700; padding: 10px 16px; border-radius: 3px; z-index: 9; }
+textarea.json { min-height: 90px; font: 400 11px var(--font-mono); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Atelier de cartes<small>Cartes personnalisées, vérifiées selon les règles officielles Konami</small></h1>
+    <div class="actions">
+      <button id="btnNew" type="button">Nouvelle carte</button>
+      <button id="btnDup" type="button">Dupliquer</button>
+      <button id="btnSave" type="button" class="primary">Enregistrer</button>
+      <button id="btnPng" type="button">Exporter en PNG</button>
+    </div>
+  </header>
+
+  <div class="board">
+    <!-- ========== FORM ========== -->
+    <section class="panel left" aria-label="Édition">
+      <h2>Fiche de la carte <span id="langSeg" class="seg" role="group" aria-label="Langue de la carte"><button type="button" data-lang="fr" aria-pressed="true">FR</button><button type="button" data-lang="en" aria-pressed="false">EN</button></span></h2>
+      <div class="body">
+        <fieldset>
+          <legend>Catégorie</legend>
+          <div class="seg" id="kindSeg" role="group" aria-label="Catégorie">
+            <button type="button" data-kind="monster">Monstre</button>
+            <button type="button" data-kind="spell">Magie</button>
+            <button type="button" data-kind="trap">Piège</button>
+          </div>
+          <label class="f">Nom de la carte<input type="text" id="name" maxlength="70"></label>
+          <div class="row">
+            <label class="f">Couleur du nom<select id="nameColor">
+              <option value="auto">Automatique</option><option value="black">Noir</option><option value="white">Blanc</option><option value="gold">Or (Ultra Rare)</option><option value="silver">Argent (Secrète)</option>
+            </select></label>
+          </div>
+        </fieldset>
+
+        <fieldset data-show="monster">
+          <legend>Monstre</legend>
+          <div class="row">
+            <label class="f">Cadre<select id="frame">
+              <option value="normal">Normal</option><option value="effect">Effet</option><option value="ritual">Rituel</option>
+              <option value="fusion">Fusion</option><option value="synchro">Synchro</option><option value="xyz">Xyz</option>
+              <option value="link">Lien</option><option value="token">Jeton</option>
+            </select></label>
+            <label class="f">Attribut<select id="attribute"></select></label>
+          </div>
+          <div class="row">
+            <label class="f">Type<select id="mtype"></select></label>
+            <label class="f" id="levelWrap"><span id="levelLabel">Niveau</span><input type="number" id="level" min="0" max="13"></label>
+          </div>
+          <div class="checks" id="abilityChecks">
+            <label id="pendWrap"><input type="checkbox" id="pendulum"> Pendule</label>
+            <label><input type="checkbox" data-ab="tuner"> Syntoniseur</label>
+            <label><input type="checkbox" data-ab="flip"> Flip</label>
+            <label><input type="checkbox" data-ab="gemini"> Gémeau</label>
+            <label><input type="checkbox" data-ab="spirit"> Spirit</label>
+            <label><input type="checkbox" data-ab="toon"> Toon</label>
+            <label><input type="checkbox" data-ab="union"> Union</label>
+            <label id="hasEffectWrap"><input type="checkbox" id="hasEffect"> Possède un effet</label>
+          </div>
+          <div id="linkWrap" class="row" style="grid-template-columns:auto 1fr;align-items:center">
+            <div class="arrows" id="arrows" aria-label="Flèches Lien"></div>
+            <p class="hint">Cliquez les flèches Lien. Le nombre de flèches actives fixe la Classe Lien.</p>
+          </div>
+          <div class="row">
+            <label class="f">ATK<input type="text" id="atk" inputmode="numeric"></label>
+            <label class="f" id="defWrap">DEF<input type="text" id="def" inputmode="numeric"></label>
+          </div>
+        </fieldset>
+
+        <fieldset data-show="spelltrap">
+          <legend>Magie / Piège</legend>
+          <label class="f">Icône<select id="stType"></select></label>
+        </fieldset>
+
+        <fieldset>
+          <legend id="textLegend">Texte</legend>
+          <textarea id="text" aria-labelledby="textLegend"></textarea>
+          <p class="hint" id="textHint"></p>
+        </fieldset>
+
+        <fieldset id="pendSet">
+          <legend>Zone Pendule</legend>
+          <div class="row">
+            <label class="f">Échelle gauche<input type="number" id="scaleL" min="0" max="13"></label>
+            <label class="f">Échelle droite<input type="number" id="scaleR" min="0" max="13"></label>
+          </div>
+          <label class="f">Effet Pendule<textarea id="pendText" style="min-height:70px"></textarea></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Illustration</legend>
+          <div class="drop" id="drop" tabindex="0" role="button">Déposez une image ici ou cliquez pour choisir</div>
+          <input type="file" id="artFile" accept="image/*" hidden>
+          <div class="row">
+            <label class="f">Zoom<input type="range" id="artZoom" min="1" max="3" step="0.01"></label>
+            <label class="f">Horizontal<input type="range" id="artX" min="-1" max="1" step="0.01"></label>
+            <label class="f">Vertical<input type="range" id="artY" min="-1" max="1" step="0.01"></label>
+          </div>
+          <button type="button" id="artClear">Retirer l'illustration</button>
+        </fieldset>
+
+        <fieldset>
+          <legend>Mentions</legend>
+          <div class="row">
+            <label class="f">Code de set<input type="text" id="setId" placeholder="AMI-FR001"></label>
+            <label class="f">Code (8 chiffres)<input type="text" id="passcode" inputmode="numeric" maxlength="8"></label>
+          </div>
+          <label class="f">Copyright<input type="text" id="copyright"></label>
+        </fieldset>
+      </div>
+    </section>
+
+    <!-- ========== STAGE ========== -->
+    <section class="stage" aria-label="Aperçu">
+      <div class="frame"><canvas id="card" width="1380" height="2012" aria-label="Aperçu de la carte"></canvas></div>
+      <div class="layers" id="layers" aria-label="Calques">
+        <label><input type="checkbox" data-layer="background" checked> Background</label>
+        <label><input type="checkbox" data-layer="texture" checked> Texture</label>
+        <label><input type="checkbox" data-layer="boxes" checked> Text boxes</label>
+        <label><input type="checkbox" data-layer="illustration" checked> Illustration</label>
+        <label><input type="checkbox" data-layer="text" checked> Text</label>
+        <label><input type="checkbox" data-layer="cut"> Cut</label>
+      </div>
+    </section>
+
+    <!-- ========== RIGHT ========== -->
+    <div class="right" style="display:grid;gap:20px;min-width:0">
+      <section class="panel" aria-label="Vérification des règles">
+        <h2>Contrôle des règles <span id="countChip" class="chip ok">OK</span></h2>
+        <div class="body">
+          <div class="verdict"><span class="dot" id="verdictDot"></span><span id="verdictText"></span></div>
+          <ul class="issues" id="issues"></ul>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Classeur">
+        <h2>Classeur <span id="collCount" style="font-weight:400"></span></h2>
+        <div class="body">
+          <ul class="coll" id="coll"></ul>
+          <div class="actions">
+            <button type="button" id="btnJson">Exporter le classeur (.json)</button>
+            <button type="button" id="btnImport">Importer</button>
+            <input type="file" id="importFile" accept="application/json,.json" hidden>
+          </div>
+          <p class="hint">Le classeur est gardé dans ce navigateur. Exportez-le en .json pour l'envoyer à vos amis ; ils l'importent de leur côté.</p>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Cartouche">
+        <h2>Cartouche</h2>
+        <div class="body">
+          <table class="tb">
+            <tr><td colspan="2"><span class="k">Titre</span><span id="tbName"></span></td></tr>
+            <tr><td><span class="k">Catégorie</span><span id="tbKind"></span></td><td><span class="k">Deck</span><span id="tbDeck"></span></td></tr>
+            <tr><td><span class="k">Set</span><span id="tbSet"></span></td><td><span class="k">Code</span><span id="tbCode"></span></td></tr>
+            <tr><td colspan="2"><span class="k">Usage</span>Partie amicale, non commerciale</td></tr>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+/* ================= Données de référence ================= */
+const ATTR = {
+  DARK:   { fr: "TÉNÈBRES", en: "DARK",   k: "闇", c: ["#9b4fc4", "#4a1868"] },
+  LIGHT:  { fr: "LUMIÈRE",  en: "LIGHT",  k: "光", c: ["#f7e27a", "#c99a16"] },
+  EARTH:  { fr: "TERRE",    en: "EARTH",  k: "地", c: ["#a07a52", "#4e351c"] },
+  WATER:  { fr: "EAU",      en: "WATER",  k: "水", c: ["#5fb2ef", "#1a5a9c"] },
+  FIRE:   { fr: "FEU",      en: "FIRE",   k: "炎", c: ["#f2674f", "#9c1c10"] },
+  WIND:   { fr: "VENT",     en: "WIND",   k: "風", c: ["#6fd27c", "#1f7a2e"] },
+  DIVINE: { fr: "DIVIN",    en: "DIVINE", k: "神", c: ["#f1d17a", "#8c6a12"] },
+};
+const ST_ATTR = { spell: { k: "魔", c: ["#3cc6a2", "#0f6c55"] }, trap: { k: "罠", c: ["#e07aa8", "#7d2350"] } };
+const TYPES = [
+  ["Aqua","Aqua"],["Beast","Bête"],["Beast-Warrior","Bête-Guerrier"],["Creator God","Dieu Créateur"],["Cyberse","Cyberse"],
+  ["Dinosaur","Dinosaure"],["Divine-Beast","Bête Divine"],["Dragon","Dragon"],["Fairy","Elfe"],["Fiend","Démon"],["Fish","Poisson"],
+  ["Illusion","Illusion"],["Insect","Insecte"],["Machine","Machine"],["Plant","Plante"],["Psychic","Psychique"],["Pyro","Pyro"],
+  ["Reptile","Reptile"],["Rock","Rocher"],["Sea Serpent","Serpent de Mer"],["Spellcaster","Magicien"],["Thunder","Tonnerre"],
+  ["Warrior","Guerrier"],["Winged Beast","Bête Ailée"],["Wyrm","Wyrm"],["Zombie","Zombie"],
+];
+const SPELL_T = { normal: ["Normale","Normal",""], continuous: ["Continue","Continuous","∞"], equip: ["Équipement","Equip","✚"], field: ["Terrain","Field","✥"], quickplay: ["Jeu-Rapide","Quick-Play","⚡"], ritual: ["Rituelle","Ritual","✺"] };
+const TRAP_T  = { normal: ["Normal","Normal",""], continuous: ["Continu","Continuous","∞"], counter: ["Contre-Piège","Counter","↩"] };
+const WORDS = {
+  fr: { Fusion:"Fusion", Synchro:"Synchro", Xyz:"Xyz", Ritual:"Rituel", Link:"Lien", Pendulum:"Pendule", tuner:"Syntoniseur", flip:"Flip", gemini:"Gémeau", spirit:"Spirit", toon:"Toon", union:"Union", Effect:"Effet", Normal:"Normal", Token:"Jeton", spell:"Carte Magie", trap:"Carte Piège" },
+  en: { Fusion:"Fusion", Synchro:"Synchro", Xyz:"Xyz", Ritual:"Ritual", Link:"Link", Pendulum:"Pendulum", tuner:"Tuner", flip:"Flip", gemini:"Gemini", spirit:"Spirit", toon:"Toon", union:"Union", Effect:"Effect", Normal:"Normal", Token:"Token", spell:"Spell Card", trap:"Trap Card" },
+};
+const FRAMES = {
+  normal:  ["#f0cf86", "#c4913f"], effect: ["#ee9a5a", "#b55d24"], ritual: ["#8cb4ea", "#4672b6"],
+  fusion:  ["#b48bcf", "#73468f"], synchro: ["#fbfbfb", "#bdbdbd"], xyz: ["#3a3a3a", "#0d0d0d"],
+  link:    ["#3c7cc4", "#1a4479"], token: ["#c4c4c4", "#858585"], spell: ["#2fb394", "#127058"], trap: ["#cf6c9a", "#8f3a63"],
+};
+const DARK_FRAMES = new Set(["xyz", "link", "spell", "trap"]);
+const EXTRA = new Set(["fusion", "synchro", "xyz", "link"]);
+const ABIL_ORDER = ["flip", "gemini", "spirit", "toon", "union", "tuner"];
+// Flèches Lien : index 0..7 = HG, H, HD, D, BD, B, BG, G
+const ARROW_GRID = [0, 1, 2, 7, -1, 3, 6, 5, 4];
+const ARROW_GLYPH = ["↖", "↑", "↗", "→", "↘", "↓", "↙", "←"];
+
+/* ================= État ================= */
+const STORE_KEY = "ygo-atelier-v1";
+const uid = () => Math.random().toString(36).slice(2, 10);
+const sample = () => ({
+  id: uid(), lang: "fr", kind: "monster", name: "Dragon Blanc aux Yeux Bleus", nameColor: "auto",
+  frame: "normal", attribute: "LIGHT", mtype: "Dragon", level: 8, pendulum: false, hasEffect: false,
+  abilities: { tuner: false, flip: false, gemini: false, spirit: false, toon: false, union: false },
+  arrows: [false, false, false, false, false, false, false, false],
+  atk: "3000", def: "2500", stType: "normal",
+  text: "Ce dragon légendaire est un puissant moteur de destruction. Pratiquement invincible, très peu ont fait face à cette impressionnante créature et ont vécu pour en parler.",
+  pendText: "", scaleL: 4, scaleR: 4,
+  setId: "LOB-FR001", passcode: "89631139", copyright: "©1996 KAZUKI TAKAHASHI",
+  art: "", artZoom: 1, artX: 0, artY: 0,
+});
+let collection = [];
+try { collection = JSON.parse(localStorage.getItem(STORE_KEY) || "[]"); } catch (e) { collection = []; }
+if (!Array.isArray(collection)) collection = [];
+let card = collection.length ? structuredClone(collection[0]) : sample();
+const layers = { background: true, texture: true, boxes: true, illustration: true, text: true, cut: false };
+let artImg = null;
+
+const $ = (id) => document.getElementById(id);
+function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(collection)); return true; } catch (e) { return false; } }
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2200); }
+
+/* ================= Règles ================= */
+const L = () => WORDS[card.lang];
+const typeName = (t) => { const e = TYPES.find((x) => x[0] === t); return e ? (card.lang === "fr" ? e[1] : e[0]) : t; };
+function isMonster() { return card.kind === "monster"; }
+function hasEffectText() {
+  if (!isMonster()) return true;
+  if (card.frame === "effect") return true;
+  if (card.frame === "normal" || card.frame === "token") return false;
+  return card.hasEffect;
+}
+function typeLine() {
+  const w = L(); const parts = [typeName(card.mtype)];
+  const summon = { fusion: "Fusion", synchro: "Synchro", xyz: "Xyz", ritual: "Ritual", link: "Link" }[card.frame];
+  if (summon) parts.push(w[summon]);
+  if (card.pendulum) parts.push(w.Pendulum);
+  ABIL_ORDER.forEach((a) => card.abilities[a] && parts.push(w[a]));
+  if (card.frame === "token") parts.push(w.Token);
+  else if (hasEffectText()) parts.push(w.Effect);
+  else if (card.frame === "normal" && (card.pendulum || card.abilities.tuner)) parts.push(w.Normal);
+  return "[" + parts.join("/") + "]";
+}
+const linkRating = () => card.arrows.filter(Boolean).length;
+const statOk = (v) => v === "?" || /^\d+$/.test(String(v).trim());
+
+function validate() {
+  const out = []; const E = (m) => out.push(["err", m]); const W = (m) => out.push(["warn", m]); const I = (m) => out.push(["info", m]);
+  const name = card.name.trim();
+  if (!name) E("La carte n'a pas de nom.");
+  if (name.length > 45) W("Nom très long : il sera fortement compressé sur la carte.");
+  const fr = card.lang === "fr";
+
+  if (isMonster()) {
+    const f = card.frame, lv = Number(card.level);
+    if (f === "link") {
+      const r = linkRating();
+      if (r < 1) E("Un monstre Lien doit avoir au moins une Flèche Lien (Classe Lien 1 minimum).");
+      if (r > 6) W(`LINK-${r} : aucune carte officielle ne dépasse LINK-6.`);
+      if (card.pendulum) E("Un monstre Lien ne peut pas être un monstre Pendule.");
+      if (card.abilities.tuner) W("Il n'existe pas de monstre Lien Syntoniseur dans le jeu officiel.");
+    } else if (f === "xyz") {
+      if (!(lv >= 0 && lv <= 13)) E("Le Rang d'un monstre Xyz va de 0 à 13.");
+      else if (lv === 0) W("Rang 0 : réservé à des cartes très particulières.");
+      if (card.abilities.tuner) W("Il n'existe pas de monstre Xyz Syntoniseur dans le jeu officiel.");
+    } else {
+      if (!(lv >= 1 && lv <= 12)) E("Le Niveau d'un monstre va de 1 à 12.");
+    }
+    if (f === "token" && card.pendulum) E("Un Jeton ne peut pas être Pendule.");
+    if (card.attribute === "DIVINE" && card.mtype !== "Divine-Beast") W("L'Attribut DIVIN est réservé aux monstres de Type Bête Divine.");
+    if (card.mtype === "Divine-Beast" && card.attribute !== "DIVINE") W("Les monstres Bête Divine sont toujours d'Attribut DIVIN.");
+    if (card.mtype === "Creator God") W("Le Type Dieu Créateur n'existe que sur une seule carte officielle.");
+
+    const ab = card.abilities; const special = ["flip", "gemini", "spirit", "toon", "union"].filter((a) => ab[a]);
+    if (special.length && f !== "effect") E(`Les monstres ${special.map((a) => WORDS.fr[a]).join(", ")} sont toujours des monstres à Effet (cadre orange).`);
+    if (special.length > 1) W("Cumuler plusieurs capacités (Flip, Gémeau, Spirit, Toon, Union) n'existe pas sur les cartes officielles.");
+    if (ab.spirit && EXTRA.has(f)) E("Un monstre Spirit ne peut pas être un monstre de l'Extra Deck.");
+
+    // ATK / DEF
+    if (!statOk(card.atk)) E("L'ATK doit être un nombre entier ou « ? ».");
+    if (f !== "link" && !statOk(card.def)) E("La DEF doit être un nombre entier ou « ? ».");
+    [["ATK", card.atk], ["DEF", f === "link" ? "0" : card.def]].forEach(([k, v]) => {
+      if (/^\d+$/.test(v)) { const n = +v; if (n % 50) W(`${k} ${n} : les valeurs officielles sont des multiples de 50.`); if (n > 5000) W(`${k} ${n} : au-delà de 5000, aucune carte officielle (hors exceptions).`); }
+    });
+
+    // Texte
+    const txt = card.text.trim(); const first = txt.split("\n")[0];
+    if (f === "effect" && !txt) E("Un monstre à Effet doit avoir un texte d'effet.");
+    if (f === "normal" && /[:;]|\bune fois par tour\b|\bonce per turn\b/i.test(txt)) W("Monstre Normal : le texte est une description d'ambiance, sans effet. Utilisez le cadre Effet si la carte a un effet.");
+    if (f === "token") I("Un Jeton n'est pas une carte de Deck : il est créé par l'effet d'une autre carte.");
+    if (EXTRA.has(f)) {
+      if (!/\d/.test(first)) E(`Monstre ${WORDS.fr[{fusion:"Fusion",synchro:"Synchro",xyz:"Xyz",link:"Link"}[f]]} : la 1re ligne du texte doit lister les Matériels (ex. ${matEx(f)}).`);
+      else {
+        if (f === "synchro" && !/syntoniseur|tuner/i.test(first)) E("Les Matériels Synchro doivent inclure 1 Syntoniseur (ex. « 1 Syntoniseur + 1+ monstres non-Syntoniseur »).");
+        if (f === "xyz" && !/niveau|level/i.test(first)) W("Les Matériels Xyz précisent normalement un Niveau (ex. « 2 monstres de Niveau 4 »).");
+        if (f === "link") {
+          const m = first.match(/(\d+)\+?/); const r = linkRating();
+          if (m && r && +m[1] > r) E(`LINK-${r} : impossible de demander ${m[1]} Matériels minimum, un monstre ne peut fournir que jusqu'à sa Classe Lien.`);
+        }
+      }
+      if (card.hasEffect === false && f !== "link" && txt.split("\n").length > 1) W("Monstre sans effet : seule la ligne des Matériels devrait figurer. Cochez « Possède un effet » sinon.");
+    }
+    if (f === "link" && !card.hasEffect) I("Les monstres Lien sans effet sont rares mais autorisés.");
+    if (f === "ritual") I("Un monstre Rituel s'Invoque avec une Carte Magie Rituelle : pensez à la créer aussi.");
+    if (!EXTRA.has(f) && f !== "token" && f !== "ritual" && lv >= 5) I(`Niveau ${lv} : Invocation Normale par Sacrifice de ${lv >= 7 ? 2 : 1} monstre${lv >= 7 ? "s" : ""}.`);
+    if (!EXTRA.has(f) && f !== "token" && lv <= 4 && /^\d+$/.test(card.atk) && +card.atk >= 2100 && hasEffectText()) I("Équilibrage : ATK élevée pour un Niveau 4 ou moins à effet. À tester entre amis.");
+
+    if (card.pendulum) {
+      const sl = +card.scaleL, sr = +card.scaleR;
+      if (!(sl >= 0 && sl <= 13 && sr >= 0 && sr <= 13)) E("Les Échelles Pendule vont de 0 à 13.");
+      if (sl !== sr) W("Les deux Échelles Pendule sont identiques sur toutes les cartes officielles récentes.");
+      if (card.frame === "normal" && !card.text.trim()) W("Monstre Pendule Normal : ajoutez un texte d'ambiance.");
+    }
+  } else {
+    if (!card.text.trim()) E(`Une ${card.kind === "spell" ? "Carte Magie" : "Carte Piège"} doit avoir un effet.`);
+    if (card.kind === "spell" && card.stType === "ritual") I("Magie Rituelle : indiquez le monstre Rituel invoqué et le Sacrifice requis (Niveaux égaux ou supérieurs).");
+    if (card.kind === "spell" && card.stType === "equip" && !/équip|equip/i.test(card.text)) W("Magie d'Équipement : le texte précise normalement à quoi elle s'équipe.");
+  }
+
+  // PSCT (syntaxe d'effet)
+  const all = [card.text, card.pendulum ? card.pendText : ""].join("\n");
+  all.split(/(?<=[.!])\s+|\n/).forEach((s) => {
+    const c = s.indexOf(":"), sc = s.indexOf(";");
+    if (c > -1 && sc > -1 && sc < c) W(`Syntaxe : la condition (« : ») vient avant le coût (« ; »). Phrase : « ${s.trim().slice(0, 60)}… »`);
+  });
+  const quoted = [...all.matchAll(/[«"]\s*([^»"]+?)\s*[»"]/g)].map((m) => m[1]);
+  if (/une fois par tour|once per turn/i.test(all) && quoted.length && name && !quoted.some((q) => q.toLowerCase() === name.toLowerCase()))
+    W("La restriction « une fois par tour » cite un nom entre guillemets qui ne correspond pas au nom de cette carte.");
+  if (fr && /\bonce per turn\b|\byou can\b/i.test(all)) W("Le texte semble en anglais alors que la carte est en français.");
+
+  // Mentions
+  if (card.passcode && !/^\d{8}$/.test(card.passcode)) W("Le code d'une carte comporte 8 chiffres.");
+  if (card.setId && !/^[A-Z0-9]{2,5}-(?:[A-Z]{2})?\d{3}$/.test(card.setId)) W("Code de set attendu au format AMI-FR001.");
+  if (!card.passcode) I("Sans code à 8 chiffres : pas de souci pour une partie amicale.");
+  return out;
+}
+function matEx(f) {
+  const fr = card.lang === "fr";
+  return { fusion: fr ? "« 2 monstres Dragon »" : "\"2 Dragon monsters\"", synchro: fr ? "« 1 Syntoniseur + 1+ monstres non-Syntoniseur »" : "\"1 Tuner + 1+ non-Tuner monsters\"", xyz: fr ? "« 2 monstres de Niveau 4 »" : "\"2 Level 4 monsters\"", link: fr ? "« 2+ monstres à Effet »" : "\"2+ Effect Monsters\"" }[f];
+}
+
+/* ================= Rendu canvas ================= */
+const W = 690, H = 1006, SCALE = 2;
+const cv = $("card"), ctx = cv.getContext("2d");
+let noise = null;
+function noisePattern() {
+  if (noise) return noise;
+  const n = document.createElement("canvas"); n.width = n.height = 128; const g = n.getContext("2d"); const d = g.createImageData(128, 128);
+  for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 40; }
+  g.putImageData(d, 0, 0); noise = ctx.createPattern(n, "repeat"); return noise;
+}
+function rr(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+function vgrad(g, y0, y1, a, b) { const gr = g.createLinearGradient(0, y0, 0, y1); gr.addColorStop(0, a); gr.addColorStop(1, b); return gr; }
+function frameKey() { return isMonster() ? card.frame : card.kind; }
+function geom() {
+  const p = isMonster() && card.pendulum;
+  return {
+    name: { x: 44, y: 44, w: 602, h: 74 },
+    art: p ? { x: 46, y: 180, w: 598, h: 452 } : { x: 84, y: 182, w: 522, h: 522 },
+    pend: p ? { x: 46, y: 632, w: 598, h: 118 } : null,
+    setY: p ? 770 : 728,
+    desc: p ? { x: 44, y: 780, w: 602, h: 176 } : { x: 44, y: 742, w: 602, h: 214 },
+  };
+}
+
+function render(g, opts = {}) {
+  const exportMode = !!opts.export; const G = geom(); const fk = frameKey(); const [c1, c2] = FRAMES[fk];
+  g.clearRect(0, 0, W, H);
+  // --- Background
+  if (layers.background) {
+    rr(g, 0, 0, W, H, 18); g.fillStyle = "#151515"; g.fill();
+    g.fillStyle = vgrad(g, 0, H, c1, c2);
+    if (isMonster() && card.pendulum) {
+      g.save(); rr(g, 20, 20, W - 40, H - 40, 6); g.clip();
+      g.fillStyle = vgrad(g, 20, 640, c1, c2); g.fillRect(20, 20, W - 40, 640);
+      g.fillStyle = vgrad(g, 600, H, FRAMES.spell[0], FRAMES.spell[1]); g.fillRect(20, 640, W - 40, H - 660);
+      const blend = g.createLinearGradient(0, 600, 0, 700); blend.addColorStop(0, c2); blend.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = blend; g.fillRect(20, 600, W - 40, 100); g.restore();
+    } else { rr(g, 20, 20, W - 40, H - 40, 6); g.fill(); }
+  }
+  // --- Texture
+  if (layers.texture && layers.background) {
+    g.save(); rr(g, 20, 20, W - 40, H - 40, 6); g.clip();
+    g.fillStyle = noisePattern(); g.globalCompositeOperation = "overlay"; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = "source-over";
+    const sh = g.createLinearGradient(0, 0, W, H); sh.addColorStop(0, "rgba(255,255,255,.18)"); sh.addColorStop(.45, "rgba(255,255,255,0)"); sh.addColorStop(1, "rgba(0,0,0,.18)");
+    g.fillStyle = sh; g.fillRect(0, 0, W, H); g.restore();
+  }
+  // --- Text boxes
+  const dark = DARK_FRAMES.has(fk);
+  if (layers.boxes) {
+    bevel(g, G.name, dark ? "rgba(0,0,0,.25)" : "rgba(255,255,255,.12)");
+    // art frame
+    g.fillStyle = "#1c1c1c"; g.fillRect(G.art.x - 8, G.art.y - 8, G.art.w + 16, G.art.h + 16);
+    g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 2; g.strokeRect(G.art.x - 7, G.art.y - 7, G.art.w + 14, G.art.h + 14);
+    if (G.pend) {
+      g.fillStyle = "#e9e2cc"; g.fillRect(G.pend.x + 66, G.pend.y, G.pend.w - 132, G.pend.h);
+      g.fillStyle = "rgba(20,20,20,.6)"; g.fillRect(G.pend.x, G.pend.y, 66, G.pend.h); g.fillRect(G.pend.x + G.pend.w - 66, G.pend.y, 66, G.pend.h);
+      g.strokeStyle = "#222"; g.lineWidth = 2; g.strokeRect(G.pend.x, G.pend.y, G.pend.w, G.pend.h);
+    }
+    g.fillStyle = vgrad(g, G.desc.y, G.desc.y + G.desc.h, "#f6efdc", "#e6dcc1"); g.fillRect(G.desc.x, G.desc.y, G.desc.w, G.desc.h);
+    g.strokeStyle = "#8a7a52"; g.lineWidth = 3; g.strokeRect(G.desc.x, G.desc.y, G.desc.w, G.desc.h);
+  }
+  // --- Illustration
+  if (layers.illustration) {
+    const a = G.art; g.save(); g.beginPath(); g.rect(a.x, a.y, a.w, a.h); g.clip();
+    if (artImg) {
+      const s = Math.max(a.w / artImg.width, a.h / artImg.height) * card.artZoom;
+      const dw = artImg.width * s, dh = artImg.height * s;
+      const dx = a.x + (a.w - dw) / 2 + card.artX * (dw - a.w) / 2, dy = a.y + (a.h - dh) / 2 + card.artY * (dh - a.h) / 2;
+      g.drawImage(artImg, dx, dy, dw, dh);
+    } else {
+      const gr = g.createRadialGradient(a.x + a.w / 2, a.y + a.h / 2, 10, a.x + a.w / 2, a.y + a.h / 2, a.w * .7);
+      gr.addColorStop(0, "#5b7fb5"); gr.addColorStop(1, "#16243d"); g.fillStyle = gr; g.fillRect(a.x, a.y, a.w, a.h);
+      g.strokeStyle = "rgba(255,255,255,.12)"; g.lineWidth = 1;
+      for (let x = a.x; x < a.x + a.w; x += 26) { g.beginPath(); g.moveTo(x, a.y); g.lineTo(x, a.y + a.h); g.stroke(); }
+      for (let y = a.y; y < a.y + a.h; y += 26) { g.beginPath(); g.moveTo(a.x, y); g.lineTo(a.x + a.w, y); g.stroke(); }
+      g.fillStyle = "rgba(255,255,255,.7)"; g.font = '28px "Kalam", cursive'; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText("Illustration", a.x + a.w / 2, a.y + a.h / 2);
+    }
+    g.restore();
+  }
+  // --- Link arrows (part of the frame)
+  if (isMonster() && card.frame === "link" && layers.boxes) drawArrows(g, G.art);
+  // --- Text
+  if (layers.text) drawTexts(g, G, dark);
+  // --- Cut guide (preview only)
+  if (layers.cut && !exportMode) {
+    g.save(); g.setLineDash([10, 8]); g.strokeStyle = "#ff3fd0"; g.lineWidth = 2.5; rr(g, 6, 6, W - 12, H - 12, 14); g.stroke();
+    g.setLineDash([]); g.fillStyle = "#ff3fd0"; g.font = '22px "Kalam", cursive'; g.textAlign = "left"; g.textBaseline = "top"; g.fillText("Cut · 59 × 86 mm", 30, H - 40); g.restore();
+  }
+}
+function bevel(g, b, fill) {
+  g.fillStyle = fill; g.fillRect(b.x, b.y, b.w, b.h);
+  g.lineWidth = 3; g.strokeStyle = "rgba(255,255,255,.45)"; g.beginPath(); g.moveTo(b.x, b.y + b.h); g.lineTo(b.x, b.y); g.lineTo(b.x + b.w, b.y); g.stroke();
+  g.strokeStyle = "rgba(0,0,0,.45)"; g.beginPath(); g.moveTo(b.x + b.w, b.y); g.lineTo(b.x + b.w, b.y + b.h); g.lineTo(b.x, b.y + b.h); g.stroke();
+}
+function drawArrows(g, a) {
+  const cx = a.x + a.w / 2, cy = a.y + a.h / 2, s = 30, o = 4;
+  const pos = [
+    [a.x - o, a.y - o, -1, -1], [cx, a.y - o - 6, 0, -1], [a.x + a.w + o, a.y - o, 1, -1], [a.x + a.w + o + 6, cy, 1, 0],
+    [a.x + a.w + o, a.y + a.h + o, 1, 1], [cx, a.y + a.h + o + 6, 0, 1], [a.x - o, a.y + a.h + o, -1, 1], [a.x - o - 6, cy, -1, 0],
+  ];
+  pos.forEach(([x, y, dx, dy], i) => {
+    g.save(); g.translate(x, y); g.rotate(Math.atan2(dy, dx));
+    g.beginPath(); g.moveTo(s * .9, 0); g.lineTo(-s * .35, -s * .75); g.lineTo(-s * .35, s * .75); g.closePath();
+    const on = card.arrows[i]; g.fillStyle = on ? vgrad(g, -s, s, "#ff6a4d", "#b3160a") : "#3b3b3b"; g.fill();
+    g.lineWidth = 2; g.strokeStyle = on ? "#ffd2c4" : "#111"; g.stroke(); g.restore();
+  });
+}
+function drawAttr(g, cx, cy, r, spec, label) {
+  const gr = g.createRadialGradient(cx - r * .3, cy - r * .3, 2, cx, cy, r); gr.addColorStop(0, spec.c[0]); gr.addColorStop(1, spec.c[1]);
+  g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fillStyle = gr; g.fill(); g.lineWidth = 3; g.strokeStyle = "#f3f3f3"; g.stroke();
+  g.fillStyle = "#fff"; g.textAlign = "center"; g.textBaseline = "middle"; g.font = `700 ${r * 1.05}px "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif CJK JP", serif`;
+  g.shadowColor = "rgba(0,0,0,.6)"; g.shadowBlur = 3; g.fillText(spec.k, cx, cy + 1); g.shadowBlur = 0;
+  if (label) { g.font = `700 ${label.length > 6 ? 8 : 9}px "Archivo", sans-serif`; g.fillText(label, cx, cy + r - 9); }
+}
+function starPath(g, cx, cy, ro, ri) { g.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? ri : ro, a = -Math.PI / 2 + i * Math.PI / 5; g.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a)); } g.closePath(); }
+function drawStar(g, cx, cy, r, xyz) {
+  const gr = g.createRadialGradient(cx - r * .3, cy - r * .3, 1, cx, cy, r);
+  if (xyz) { gr.addColorStop(0, "#555"); gr.addColorStop(1, "#000"); } else { gr.addColorStop(0, "#ff7a3d"); gr.addColorStop(1, "#a3170b"); }
+  g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fillStyle = gr; g.fill(); g.lineWidth = 1.5; g.strokeStyle = "#ffe08a"; g.stroke();
+  starPath(g, cx, cy, r * .78, r * .33); g.fillStyle = "#ffe14d"; g.fill();
+}
+function nameFill(dark) {
+  const c = card.nameColor === "auto" ? (dark ? "white" : "black") : card.nameColor;
+  return { black: ["#111", null], white: ["#fff", "rgba(0,0,0,.5)"], gold: ["#f3cf6a", "#5b3d00"], silver: ["#e8e8e8", "#333"] }[c];
+}
+
+// texte justifié avec réduction automatique
+function wrap(g, text, maxW) {
+  const lines = [];
+  text.split("\n").forEach((para) => {
+    const words = para.split(/\s+/).filter(Boolean); if (!words.length) { lines.push({ words: [], last: true }); return; }
+    let cur = [];
+    words.forEach((w) => { const t = [...cur, w].join(" "); if (cur.length && g.measureText(t).width > maxW) { lines.push({ words: cur, last: false }); cur = [w]; } else cur.push(w); });
+    lines.push({ words: cur, last: true });
+  });
+  return lines;
+}
+function fitText(g, text, box, { max, min, italic, weight = 400 }) {
+  let size = max, lines, lh;
+  for (; size >= min; size -= .5) {
+    g.font = `${italic ? "italic " : ""}${weight} ${size}px "Spectral", Georgia, serif`;
+    lines = wrap(g, text, box.w); lh = size * 1.18;
+    if (lines.length * lh <= box.h) break;
+  }
+  if (size < min) size = min;
+  g.font = `${italic ? "italic " : ""}${weight} ${size}px "Spectral", Georgia, serif`; lines = wrap(g, text, box.w); lh = size * 1.18;
+  g.textAlign = "left"; g.textBaseline = "alphabetic";
+  lines.forEach((ln, i) => {
+    const y = box.y + size + i * lh; if (y > box.y + box.h + 2) return;
+    if (ln.last || ln.words.length < 2) { g.fillText(ln.words.join(" "), box.x, y); return; }
+    const ws = ln.words.map((w) => g.measureText(w).width); const gap = (box.w - ws.reduce((a, b) => a + b, 0)) / (ln.words.length - 1);
+    let x = box.x; ln.words.forEach((w, j) => { g.fillText(w, x, y); x += ws[j] + gap; });
+  });
+  return lines.length * lh > box.h + 1;
+}
+let overflow = false;
+function drawTexts(g, G, dark) {
+  const w = L(); overflow = false;
+  // Nom
+  const nb = G.name; const [fill, stroke] = nameFill(dark);
+  g.save(); g.font = `700 50px "Spectral SC", Georgia, serif`; g.textBaseline = "middle"; g.textAlign = "left";
+  const maxW = nb.w - 92; const tw = g.measureText(card.name).width; const sx = tw > maxW ? maxW / tw : 1;
+  g.translate(nb.x + 16, nb.y + nb.h / 2 + 3); g.scale(sx, 1);
+  if (stroke) { g.lineWidth = 3; g.strokeStyle = stroke; g.strokeText(card.name, 0, 0); }
+  g.fillStyle = fill; g.fillText(card.name, 0, 0); g.restore();
+  // Attribut
+  const acx = nb.x + nb.w - 38, acy = nb.y + nb.h / 2;
+  if (isMonster()) drawAttr(g, acx, acy, 30, ATTR[card.attribute], "");
+  else drawAttr(g, acx, acy, 30, ST_ATTR[card.kind], "");
+
+  if (isMonster()) {
+    const f = card.frame, lv = Math.max(0, Math.min(13, Math.round(+card.level || 0)));
+    if (f !== "link") {
+      const r = 19, gap = 42, y = 150;
+      if (f === "xyz") for (let i = 0; i < lv; i++) drawStar(g, 64 + i * gap, y, r, true);
+      else for (let i = 0; i < Math.min(lv, 12); i++) drawStar(g, 626 - i * gap, y, r, false);
+    }
+  } else {
+    const tbl = card.kind === "spell" ? SPELL_T : TRAP_T; const t = tbl[card.stType] || tbl.normal;
+    const label = `[${w[card.kind]}${t[2] ? "  " : ""}]`;
+    g.font = `700 34px "Spectral SC", Georgia, serif`; g.textAlign = "right"; g.textBaseline = "middle"; g.fillStyle = "#111";
+    if (t[2]) {
+      const iconX = 626 - 18; g.beginPath(); g.arc(iconX, 150, 19, 0, Math.PI * 2); g.fillStyle = "#e33a2a"; g.fill(); g.strokeStyle = "#fff"; g.lineWidth = 2; g.stroke();
+      g.fillStyle = "#fff"; g.font = `700 22px "Archivo", sans-serif`; g.textAlign = "center"; g.fillText(t[2], iconX, 151);
+      g.font = `700 34px "Spectral SC", Georgia, serif`; g.textAlign = "right"; g.fillStyle = "#111"; g.fillText(`[${w[card.kind]}`, iconX - 26, 152); g.textAlign = "left"; g.fillText("]", iconX + 22, 152);
+    } else g.fillText(label, 640, 152);
+  }
+
+  // Pendule
+  if (G.pend) {
+    const p = G.pend;
+    [[p.x + 33, card.scaleL, "#3c8ee0"], [p.x + p.w - 33, card.scaleR, "#e04a3c"]].forEach(([x, v, col]) => {
+      g.save(); g.translate(x, p.y + 34); g.rotate(Math.PI / 4); g.fillStyle = col; g.fillRect(-11, -11, 22, 22); g.restore();
+      g.fillStyle = "#fff"; g.font = `700 38px "Spectral", serif`; g.textAlign = "center"; g.textBaseline = "alphabetic"; g.fillText(String(v), x, p.y + 100);
+    });
+    g.fillStyle = "#111";
+    if (fitText(g, card.pendText, { x: p.x + 76, y: p.y + 6, w: p.w - 152, h: p.h - 12 }, { max: 17, min: 9 })) overflow = true;
+  }
+
+  // Code de set
+  g.font = `600 17px "Spectral", serif`; g.textBaseline = "alphabetic"; g.fillStyle = dark ? "#fff" : "#111";
+  if (card.setId) {
+    if (isMonster() && card.frame === "link") { g.textAlign = "left"; g.fillText(card.setId, 120, G.setY); }
+    else { g.textAlign = "right"; g.fillText(card.setId, isMonster() && card.pendulum ? 640 : 600, G.setY); }
+  }
+
+  // Description
+  const d = G.desc; g.fillStyle = "#111";
+  if (isMonster()) {
+    g.font = `700 21px "Spectral SC", Georgia, serif`; g.textAlign = "left"; g.textBaseline = "alphabetic";
+    g.fillText(typeLine(), d.x + 14, d.y + 28);
+    const body = { x: d.x + 14, y: d.y + 34, w: d.w - 28, h: d.h - 34 - 40 };
+    if (fitText(g, card.text, body, { max: 19, min: 9, italic: card.frame === "normal" })) overflow = true;
+    g.strokeStyle = "#111"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(d.x + 14, d.y + d.h - 36); g.lineTo(d.x + d.w - 14, d.y + d.h - 36); g.stroke();
+    g.font = `700 22px "Spectral", Georgia, serif`; g.textAlign = "right";
+    const atk = `ATK/${String(card.atk).padStart(4, " ")}`;
+    const right = card.frame === "link" ? `LINK-${linkRating()}` : `DEF/${String(card.def).padStart(4, " ")}`;
+    g.fillText(right, d.x + d.w - 16, d.y + d.h - 11); const rw = g.measureText(right).width;
+    g.fillText(atk, d.x + d.w - 16 - rw - 26, d.y + d.h - 11);
+  } else {
+    if (fitText(g, card.text, { x: d.x + 14, y: d.y + 10, w: d.w - 28, h: d.h - 20 }, { max: 20, min: 9 })) overflow = true;
+  }
+
+  // Bas de carte
+  g.fillStyle = dark ? "#fff" : "#111"; g.font = `400 16px "Spectral", serif`; g.textBaseline = "alphabetic";
+  g.textAlign = "left"; g.fillText(card.passcode || "", 36, 984);
+  g.textAlign = "right"; g.fillText(card.copyright || "", 654, 984);
+}
+
+function draw() {
+  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0); render(ctx);
+  renderIssues(); renderTitleBlock();
+}
+
+/* ================= UI ================= */
+function fillSelects() {
+  $("attribute").innerHTML = Object.entries(ATTR).map(([k, v]) => `<option value="${k}">${v[card.lang]}</option>`).join("");
+  $("mtype").innerHTML = TYPES.map(([en, fr]) => `<option value="${en}">${card.lang === "fr" ? fr : en}</option>`).join("");
+  const tbl = card.kind === "trap" ? TRAP_T : SPELL_T;
+  $("stType").innerHTML = Object.entries(tbl).map(([k, v]) => `<option value="${k}">${v[0]}${v[2] ? " " + v[2] : ""}</option>`).join("");
+}
+function syncForm() {
+  fillSelects();
+  document.querySelectorAll("#kindSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.kind === card.kind)));
+  document.querySelectorAll("#langSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === card.lang)));
+  ["name", "nameColor", "frame", "attribute", "mtype", "level", "atk", "def", "stType", "text", "pendText", "scaleL", "scaleR", "setId", "passcode", "copyright", "artZoom", "artX", "artY"].forEach((k) => { $(k).value = card[k]; });
+  $("pendulum").checked = card.pendulum; $("hasEffect").checked = card.hasEffect;
+  document.querySelectorAll("[data-ab]").forEach((c) => (c.checked = !!card.abilities[c.dataset.ab]));
+  updateVisibility(); renderArrowsUI(); renderColl();
+}
+function updateVisibility() {
+  const m = isMonster(), f = card.frame;
+  document.querySelector('[data-show="monster"]').hidden = !m;
+  document.querySelector('[data-show="spelltrap"]').hidden = m;
+  if (f === "link" || f === "token") card.pendulum = false;
+  $("pendWrap").hidden = f === "link" || f === "token";
+  $("pendSet").hidden = !(m && card.pendulum);
+  $("linkWrap").hidden = !(m && f === "link");
+  $("levelWrap").hidden = f === "link";
+  $("defWrap").hidden = f === "link";
+  $("levelLabel").textContent = f === "xyz" ? "Rang" : "Niveau";
+  $("hasEffectWrap").hidden = !["ritual", "fusion", "synchro", "xyz", "link"].includes(f);
+  const hint = !m ? "Texte de l'effet de la carte." : f === "normal" ? "Monstre Normal : texte d'ambiance (affiché en italique)." : EXTRA.has(f) ? `1re ligne : les Matériels, ex. ${matEx(f)}. Puis l'effet.` : "Texte de l'effet. Syntaxe officielle : condition « : », coût « ; », puis l'effet.";
+  $("textHint").textContent = hint;
+  $("textLegend").textContent = m && f === "normal" ? "Description" : "Effet";
+}
+function renderArrowsUI() {
+  $("arrows").innerHTML = ARROW_GRID.map((i) => i < 0 ? `<span class="mid">LINK-${linkRating()}</span>` : `<button type="button" data-arrow="${i}" aria-pressed="${card.arrows[i]}" aria-label="Flèche ${ARROW_GLYPH[i]}">${ARROW_GLYPH[i]}</button>`).join("");
+}
+function renderIssues() {
+  const list = validate(); if (overflow) list.unshift(["warn", "Le texte est trop long pour la boîte : il dépasse même à la plus petite taille. Raccourcissez-le."]);
+  const errs = list.filter((x) => x[0] === "err").length, warns = list.filter((x) => x[0] === "warn").length;
+  const label = { err: "Erreur", warn: "Alerte", info: "Info" };
+  $("issues").innerHTML = list.length ? list.map(([lv, m]) => `<li><span class="chip ${lv}">${label[lv]}</span><span>${esc(m)}</span></li>`).join("") : `<li><span class="chip ok">OK</span><span>Rien à signaler.</span></li>`;
+  const chip = $("countChip"), dot = $("verdictDot");
+  if (errs) { chip.className = "chip err"; chip.textContent = `${errs} erreur${errs > 1 ? "s" : ""}`; dot.style.background = "var(--err)"; $("verdictText").textContent = "Non conforme aux règles"; }
+  else if (warns) { chip.className = "chip warn"; chip.textContent = `${warns} alerte${warns > 1 ? "s" : ""}`; dot.style.background = "var(--warn)"; $("verdictText").textContent = "Jouable, avec des écarts au style officiel"; }
+  else { chip.className = "chip ok"; chip.textContent = "OK"; dot.style.background = "var(--ok)"; $("verdictText").textContent = "Conforme aux règles officielles"; }
+}
+function renderTitleBlock() {
+  $("tbName").textContent = card.name || "—";
+  $("tbKind").textContent = isMonster() ? `Monstre ${$("frame").selectedOptions[0]?.textContent || ""}` : card.kind === "spell" ? "Magie" : "Piège";
+  $("tbDeck").textContent = isMonster() && EXTRA.has(card.frame) ? "Extra Deck" : isMonster() && card.frame === "token" ? "Hors Deck" : "Main Deck";
+  $("tbSet").textContent = card.setId || "—"; $("tbCode").textContent = card.passcode || "—";
+}
+function renderColl() {
+  $("collCount").textContent = `${collection.length} carte${collection.length > 1 ? "s" : ""}`;
+  $("coll").innerHTML = collection.length ? collection.map((c) => {
+    const fk = c.kind === "monster" ? c.frame : c.kind;
+    return `<li data-id="${c.id}" aria-current="${c.id === card.id}"><span class="sw" style="background:${FRAMES[fk][0]}"></span><span style="min-width:0"><span class="nm" style="display:block">${esc(c.name || "Sans nom")}</span><span class="meta">${c.setId || ""}</span></span><button type="button" class="del danger" data-del="${c.id}">Suppr.</button></li>`;
+  }).join("") : `<li style="cursor:default;grid-template-columns:1fr"><span class="hint">Aucune carte enregistrée. Cliquez « Enregistrer » pour ranger la carte en cours.</span></li>`;
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function loadArt() { artImg = null; if (!card.art) { draw(); return; } const im = new Image(); im.onload = () => { artImg = im; draw(); }; im.src = card.art; }
+
+// liaisons
+const num = new Set(["level", "scaleL", "scaleR", "artZoom", "artX", "artY"]);
+["name", "nameColor", "frame", "attribute", "mtype", "level", "atk", "def", "stType", "text", "pendText", "scaleL", "scaleR", "setId", "passcode", "copyright", "artZoom", "artX", "artY"].forEach((k) => {
+  $(k).addEventListener("input", (e) => {
+    card[k] = num.has(k) ? Number(e.target.value) : e.target.value;
+    if (k === "frame") { if (card.frame === "effect") card.hasEffect = true; syncForm(); }
+    draw();
+  });
+});
+$("pendulum").addEventListener("change", (e) => { card.pendulum = e.target.checked; updateVisibility(); draw(); });
+$("hasEffect").addEventListener("change", (e) => { card.hasEffect = e.target.checked; draw(); });
+document.querySelectorAll("[data-ab]").forEach((c) => c.addEventListener("change", () => { card.abilities[c.dataset.ab] = c.checked; draw(); }));
+$("kindSeg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; card.kind = b.dataset.kind; if (card.kind !== "monster") card.stType = "normal"; syncForm(); draw(); });
+$("langSeg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; card.lang = b.dataset.lang; syncForm(); draw(); });
+$("arrows").addEventListener("click", (e) => { const b = e.target.closest("[data-arrow]"); if (!b) return; const i = +b.dataset.arrow; card.arrows[i] = !card.arrows[i]; renderArrowsUI(); draw(); });
+document.querySelectorAll("[data-layer]").forEach((c) => c.addEventListener("change", () => { layers[c.dataset.layer] = c.checked; draw(); }));
+
+// illustration
+function readArt(file) {
+  if (!file || !file.type.startsWith("image/")) { toast("Ce fichier n'est pas une image."); return; }
+  const fr = new FileReader();
+  fr.onload = () => {
+    const im = new Image();
+    im.onload = () => { // réduit pour tenir dans le stockage du navigateur
+      const max = 900, s = Math.min(1, max / Math.max(im.width, im.height)); const c = document.createElement("canvas");
+      c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      card.art = c.toDataURL("image/jpeg", .86); card.artZoom = 1; card.artX = 0; card.artY = 0; syncForm(); loadArt();
+    };
+    im.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+const drop = $("drop");
+drop.addEventListener("click", () => $("artFile").click());
+drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("artFile").click(); } });
+$("artFile").addEventListener("change", (e) => { readArt(e.target.files[0]); e.target.value = ""; });
+drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); readArt(e.dataTransfer.files[0]); });
+document.addEventListener("paste", (e) => { const f = [...(e.clipboardData?.files || [])].find((x) => x.type.startsWith("image/")); if (f) readArt(f); });
+$("artClear").addEventListener("click", () => { card.art = ""; loadArt(); });
+
+// classeur
+$("btnSave").addEventListener("click", () => {
+  const i = collection.findIndex((c) => c.id === card.id); const copy = structuredClone(card);
+  if (i > -1) collection[i] = copy; else collection.unshift(copy);
+  renderColl(); toast(persist() ? "Carte enregistrée dans le classeur" : "Enregistrée pour cette session (stockage du navigateur indisponible)");
+});
+$("btnNew").addEventListener("click", () => { const s = sample(); card = { ...s, name: "Nouvelle carte", text: "", frame: "effect", hasEffect: true, attribute: "DARK", mtype: "Warrior", level: 4, atk: "1800", def: "1200", setId: "AMI-FR001", passcode: "", copyright: "Partie amicale" }; syncForm(); loadArt(); });
+$("btnDup").addEventListener("click", () => { card = { ...structuredClone(card), id: uid(), name: card.name + " (copie)" }; syncForm(); draw(); toast("Copie créée, pensez à l'enregistrer"); });
+$("coll").addEventListener("click", (e) => {
+  const del = e.target.closest("[data-del]");
+  if (del) {
+    if (del.dataset.armed) { collection = collection.filter((c) => c.id !== del.dataset.del); persist(); renderColl(); toast("Carte supprimée"); }
+    else { del.dataset.armed = "1"; del.textContent = "Confirmer ?"; setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = "Suppr."; } }, 3000); }
+    return;
+  }
+  const li = e.target.closest("li[data-id]"); if (!li) return;
+  const c = collection.find((x) => x.id === li.dataset.id); if (c) { card = structuredClone(c); syncForm(); loadArt(); }
+});
+
+// exports
+let downloads = null;
+if (window.claude?.use) window.claude.use("downloads").then((d) => (downloads = d)).catch(() => {});
+async function saveFile(filename, data) {
+  if (downloads) {
+    try { await downloads.save({ filename, data }); toast("Fichier enregistré"); }
+    catch (err) { if (err?.code !== "declined") toast("Enregistrement impossible ici."); }
+    return;
+  }
+  const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data])); const a = document.createElement("a");
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+const slug = (s) => (s || "carte").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+$("btnPng").addEventListener("click", () => {
+  const c = document.createElement("canvas"); c.width = W * 2; c.height = H * 2; const g = c.getContext("2d"); g.setTransform(2, 0, 0, 2, 0, 0);
+  render(g, { export: true }); c.toBlob((b) => b && saveFile(slug(card.name) + ".png", b), "image/png");
+});
+$("btnJson").addEventListener("click", () => saveFile("classeur-cartes.json", JSON.stringify({ format: "ygo-atelier", version: 1, cards: collection }, null, 1)));
+$("btnImport").addEventListener("click", () => $("importFile").click());
+$("importFile").addEventListener("change", (e) => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  f.text().then((t) => {
+    const data = JSON.parse(t); const cards = Array.isArray(data) ? data : data.cards;
+    if (!Array.isArray(cards)) throw new Error();
+    let n = 0; cards.forEach((c) => { if (!c || typeof c !== "object" || !c.kind) return; const base = sample(); const merged = { ...base, ...c, abilities: { ...base.abilities, ...(c.abilities || {}) } }; if (collection.some((x) => x.id === merged.id)) merged.id = uid(); collection.push(merged); n++; });
+    persist(); renderColl(); toast(`${n} carte${n > 1 ? "s" : ""} importée${n > 1 ? "s" : ""}`);
+  }).catch(() => toast("Fichier non reconnu : il faut un export .json de l'atelier."));
+});
+
+syncForm(); loadArt();
+if (document.fonts?.load) Promise.all(["700 50px 'Spectral SC'", "400 19px Spectral", "italic 400 19px Spectral", "28px Kalam"].map((f) => document.fonts.load(f))).then(draw, draw);
+})();
+</script>
