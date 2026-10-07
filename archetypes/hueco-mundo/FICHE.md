@@ -68,6 +68,8 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR006 | Ulquiorra Cifer - Murciélago | Monstre à Effet, Niv. 8, 2800/2200 | Terminée |
 | HMUN-FR007 | Encadénate, Murciélago ! | Magie Jeu-Rapide | Terminée |
 | HMUN-FR008 | Dominance du Vasto Lorde | Piège Continu | Terminée (version équilibrée) |
+| HMUN-FR009 | Grimmjow Jaegerjaquez - Le Sixième Espada | Monstre Syntoniseur/Effet, Niv. 4, 1900/1000 | Texte validé · visuel à venir |
+| HMUN-FR010 | Grimmjow Jaegerjaquez - Pantera | Monstre Synchro/Effet, Niv. 8, 3000/2000 | Texte validé · visuel à venir |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
@@ -109,6 +111,12 @@ devant les tours sombres de Las Noches qui se reflètent dans l'eau.
 Ichigo en Vasto Lorde (masque à cornes, longs cheveux noirs, trou de Hollow au poitrail) saisit d'une main le visage
 ou la corne d'Ulquiorra Segunda Etapa, les yeux rouge sang, un Cero rouge se chargeant devant son masque. Ruines du
 dôme de Las Noches dans un Reiatsu rouge et noir instable. Terreur, basculement de puissance.
+
+### Voie Grimmjow (Synchro, agressive)
+Espada n°6 : libération libre, il profite de Las Noches sur le Terrain (Invocation depuis la main).
+Grimmjow (Syntoniseur Niv. 4) + 1 monstre Niv. 4 → Pantera (Synchro Niv. 8), qui détruit des Magies/Pièges
+puis attaque tous les monstres adverses avec dommages perçants.
+Grimmjow est Bête-Guerrier : il ne reçoit pas le bonus de Las Noches (réservé aux Démons TÉNÈBRES).
 
 ## Points de vigilance (équilibrage)
 
