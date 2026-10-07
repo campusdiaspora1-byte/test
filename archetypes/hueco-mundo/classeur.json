@@ -901,6 +901,51 @@
    "artZoom": 1,
    "artX": 0,
    "artY": -0.9
+  },
+  {
+   "id": "hm-021",
+   "lang": "fr",
+   "kind": "spell",
+   "name": "Laboratoire de l'Octava Espada - Modification Organique",
+   "nameColor": "auto",
+   "frame": "effect",
+   "attribute": "DARK",
+   "mtype": "Fiend",
+   "level": 4,
+   "pendulum": false,
+   "hasEffect": true,
+   "abilities": {
+    "tuner": false,
+    "flip": false,
+    "gemini": false,
+    "spirit": false,
+    "toon": false,
+    "union": false
+   },
+   "arrows": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "atk": "1800",
+   "def": "1200",
+   "stType": "continuous",
+   "text": "Lors de l'activation de cette carte, déclarez 1 Type de monstre. Tous les monstres face recto sur le Terrain deviennent du Type déclaré. Les monstres face recto que vous contrôlez sont aussi traités comme des monstres « Espada ». Une fois par tour : vous pouvez Sacrifier 1 monstre que vous contrôlez ; piochez 1 carte, puis, si vous contrôlez « Las Noches - Palais du Hueco Mundo », vous pouvez ajouter à votre main 1 Magie Jeu-Rapide « Cero » depuis votre Cimetière. Si cette carte face recto dans votre Zone Magie & Piège est détruite : vous pouvez cibler 1 monstre contrôlé par votre adversaire ; jusqu'à la fin de ce tour, il perd 1000 ATK/DEF et devient de Type Démon.",
+   "pendText": "",
+   "scaleL": 4,
+   "scaleR": 4,
+   "setId": "HMUN-FR021",
+   "passcode": "",
+   "copyright": "Hueco Mundo · fan-made",
+   "art": "",
+   "artZoom": 1,
+   "artX": 0,
+   "artY": 0
   }
  ]
 }

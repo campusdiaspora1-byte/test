@@ -79,6 +79,7 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR018 | Las Tres Bestias - Fracciones de la Chimère | Monstre à Effet EAU, Niv. 4, 1500/1500 | Terminée |
 | HMUN-FR019 | Ayon - Monstre de la Calamité | Monstre Fusion/Effet, Niv. 8, 3000/0 | Terminée |
 | HMUN-FR020 | Fracciones - Garde Servile de l'Espada | Monstre à Effet, Niv. 4, 1200/1000 | Terminée |
+| HMUN-FR021 | Laboratoire de l'Octava Espada - Modification Organique | Magie Continue | Texte validé · visuel à venir |
 | HMUN-FR013 | Lilynette Gingerbuck - La Fracción du Premier Espada | Monstre à Effet, Niv. 4, 1000/1000 | Terminée (visuel basse résolution, 288×432) |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
@@ -152,7 +153,15 @@ avec Las Tres Bestias + 2 autres monstres « Espada »/« Fracciones » ; les Je
 Ayon (FR019) : Fusion de contact, Las Tres Bestias + 3 Jetons Sacrifiés, sans Polymérisation.
 Verrou de FR018 : Extra Deck limité aux monstres Démon ce tour, d'où l'importance de la règle « tous les monstres sont Démon ».
 
+### HMUN-FR021 · Laboratoire de l'Octava Espada (Szayel Aporro)
+Magie Continue « Espada » : FR001 peut la chercher. Change le Type de tout le Terrain et fait de vos monstres des
+« Espada » : Fracciones et Las Tres Bestias deviennent Matériels de Los Lobos, et cherchables / ciblables comme Espada.
+Conseil : déclarer Démon, pour garder le bonus de Las Noches et le verrou Démon de FR018.
+
 ## Points de vigilance (équilibrage)
+
+- FR021 : Sacrifice limité à vos propres monstres (Sacrifier un monstre adverse + piocher, chaque tour, ferait une
+  destruction gratuite qui ignore toutes les protections). Pas de changement dans les Cimetières.
 
 - FR015 : Respira limitée à une fois par tour (sans limite, elle annulait tout le Terrain adverse en un tour).
 
