@@ -33,7 +33,7 @@ Formules officielles à utiliser : « Tant que « Las Noches - Palais du Hueco M
 ## Identité
 
 - Attribut : TÉNÈBRES.
-- Types : Démon (Hollows, Arrancars), Guerrier possible pour certains Arrancars.
+- Type : Démon pour tous les monstres (Hollows, Arrancars, Resurrección).
 - Sous-familles citées dans les textes : « Espada », « Ulquiorra Cifer », « Las Noches ».
 - Code de set : `HMUN-FR###`.
 
@@ -116,7 +116,7 @@ dôme de Las Noches dans un Reiatsu rouge et noir instable. Terreur, basculement
 Espada n°6 : libération libre, il profite de Las Noches sur le Terrain (Invocation depuis la main).
 Grimmjow (Syntoniseur Niv. 4) + 1 monstre Niv. 4 → Pantera (Synchro Niv. 8), qui détruit des Magies/Pièges
 puis attaque tous les monstres adverses avec dommages perçants.
-Grimmjow est Bête-Guerrier : il ne reçoit pas le bonus de Las Noches (réservé aux Démons TÉNÈBRES).
+Grimmjow et Pantera sont Démon TÉNÈBRES : ils reçoivent le bonus de Las Noches (+300 ATK/DEF).
 
 ## Points de vigilance (équilibrage)
 
