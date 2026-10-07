@@ -56,7 +56,7 @@ Formules officielles à utiliser : « Tant que « Las Noches - Palais du Hueco M
 |---|---|---|---|
 | HMUN-FR001 | Ulquiorra Cifer - Le Quatrième Espada | Monstre à Effet, Niv. 4, 1800/1200 | Terminée |
 | HMUN-FR004 | Ulquiorra Cifer - Segunda Etapa | Monstre à Effet, Niv. 10, 3500/3000, boss | Terminée |
-| HMUN-FR005 | Fracciones - Tir d'Interception | Monstre à Effet, Niv. 3, 1000/1000, handtrap | Texte validé · visuel à venir |
+| HMUN-FR005 | Fracciones - Tir d'Interception | Monstre à Effet, Niv. 3, 1000/1000, handtrap | Terminée |
 | à venir | Ulquiorra Cifer - Murciélago | Monstre « Ulquiorra Cifer » Niv. 5+ | Cible de FR001, doit invoquer FR004 |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
