@@ -46,6 +46,51 @@
    "artZoom": 1.12,
    "artX": 0.3,
    "artY": -0.95
+  },
+  {
+   "id": "hm-002",
+   "lang": "fr",
+   "kind": "spell",
+   "name": "Las Noches - Palais du Hueco Mundo",
+   "nameColor": "auto",
+   "frame": "effect",
+   "attribute": "DARK",
+   "mtype": "Fiend",
+   "level": 4,
+   "pendulum": false,
+   "hasEffect": true,
+   "abilities": {
+    "tuner": false,
+    "flip": false,
+    "gemini": false,
+    "spirit": false,
+    "toon": false,
+    "union": false
+   },
+   "arrows": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "atk": "1800",
+   "def": "1200",
+   "stType": "field",
+   "text": "Les monstres Démon TÉNÈBRES sur le Terrain gagnent 300 ATK/DEF. Une fois par tour : vous pouvez défausser 1 carte ; ajoutez 1 monstre « Ulquiorra Cifer » ou « Espada » depuis votre Deck à votre main. Si cette carte sur le Terrain est envoyée au Cimetière : vous pouvez Invoquer Spécialement 1 monstre « Ulquiorra Cifer » de Niveau 4 ou moins depuis votre main ou votre Cimetière. Vous ne pouvez utiliser cet effet de « Las Noches - Palais du Hueco Mundo » qu'une fois par tour.",
+   "pendText": "",
+   "scaleL": 4,
+   "scaleR": 4,
+   "setId": "HMUN-FR002",
+   "passcode": "",
+   "copyright": "Hueco Mundo · fan-made",
+   "art": "",
+   "artZoom": 1,
+   "artX": 0,
+   "artY": 0
   }
  ]
 }

@@ -594,8 +594,10 @@ function nameFill(dark) {
 // texte justifié avec réduction automatique
 function wrap(g, text, maxW) {
   const lines = [];
+  // espaces insécables à la française : « Nom », avant « : » et « ; »
+  text = text.replace(/« +/g, "«\u00A0").replace(/ +»/g, "\u00A0»").replace(/ +([:;!?])/g, "\u00A0$1");
   text.split("\n").forEach((para) => {
-    const words = para.split(/\s+/).filter(Boolean); if (!words.length) { lines.push({ words: [], last: true }); return; }
+    const words = para.split(/[ \t]+/).filter(Boolean); if (!words.length) { lines.push({ words: [], last: true }); return; }
     let cur = [];
     words.forEach((w) => { const t = [...cur, w].join(" "); if (cur.length && g.measureText(t).width > maxW) { lines.push({ words: cur, last: false }); cur = [w]; } else cur.push(w); });
     lines.push({ words: cur, last: true });

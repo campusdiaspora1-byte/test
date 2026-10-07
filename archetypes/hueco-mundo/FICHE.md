@@ -22,7 +22,7 @@ Thème : *Bleach*, le monde des Hollows et des Arrancars. Usage : parties amical
 | HMUN-FR001 | Ulquiorra Cifer - Le Quatrième Espada | Monstre à Effet, Niv. 4, 1800/1200 | Terminée |
 | à venir | « Ulquiorra Cifer » Resurrección : Murciélago | Monstre « Ulquiorra Cifer » Niv. 5+ | Cible de FR001 |
 | à venir | Segunda Etapa | Magie ou Piège « Espada » ? | Boucle de transformation |
-| à venir | Las Noches | Magie de Terrain | Cible de recherche de FR001 |
+| HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Texte validé · visuel à venir |
 
 ## Brief visuel
 
@@ -31,7 +31,15 @@ Ulquiorra en tenue blanche d'Arrancar, mains dans les poches du hakama, visage s
 lignes de larmes vertes sur les joues, reste de masque de Hollow sur la tête. Désert de sable blanc sous un ciel
 nocturne étoilé et un croissant de lune inversé. Contours marqués, éclairage dramatique, halo de Reiatsu discret.
 
+## Mécaniques transversales
+
+- « Las Noches » dans le Cimetière : sert de condition à d'autres cartes « Ulquiorra Cifer » (résurrection, recyclage).
+  Ce texte figurera sur ces cartes-là, pas sur Las Noches.
+
 ## Points de vigilance (équilibrage)
+
+- FR002 : la boucle FR001 → Las Noches → monstre « Ulquiorra Cifer »/« Espada » coûte 1 défausse, c'est le prix voulu.
+  La résurrection quand Las Noches quitte le Terrain est limitée au Niveau 4 ou moins pour ne pas ramener Murciélago gratuitement.
 
 - FR001 : sa recherche + son Effet Rapide depuis le Deck en font une carte très forte en un seul exemplaire Normal.
   Si la forme Niv. 5+ s'avère trop puissante, limiter l'Invocation Spéciale à « main ou Cimetière ».
