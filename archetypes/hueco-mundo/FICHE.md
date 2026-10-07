@@ -51,6 +51,7 @@ Formules officielles à utiliser : « Tant que « Las Noches - Palais du Hueco M
 | à venir | « Ulquiorra Cifer » Resurrección : Murciélago | Monstre « Ulquiorra Cifer » Niv. 5+ | Cible de FR001 |
 | à venir | Segunda Etapa | Magie ou Piège « Espada » ? | Boucle de transformation |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
+| HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Texte validé · visuel à venir |
 
 ## Brief visuel
 
@@ -64,7 +65,14 @@ nocturne étoilé et un croissant de lune inversé. Contours marqués, éclairag
 - « Las Noches » dans le Cimetière : sert de condition à d'autres cartes « Ulquiorra Cifer » (résurrection, recyclage).
   Ce texte figurera sur ces cartes-là, pas sur Las Noches.
 
+### HMUN-FR003 · Cero Oscuras - Le Cero Noir du Désespoir
+Le tir du Cero Oscuras : une immense vague d'énergie ténébreuse bordée de lueurs vert néon qui perce la nuit.
+Impact explosif, Reiatsu écrasant qui ravage tout sur son passage.
+
 ## Points de vigilance (équilibrage)
+
+- FR003 : destruction ciblée en Jeu-Rapide + dégâts, limitée à 1 activation par tour. N'est pas une Magie « Espada »
+  ni « Las Noches », donc FR001 ne peut pas la chercher (à décider).
 
 - FR002 : la boucle FR001 → Las Noches → monstre « Ulquiorra Cifer »/« Espada » coûte 1 défausse, c'est le prix voulu.
   La résurrection quand Las Noches quitte le Terrain est limitée au Niveau 4 ou moins pour ne pas ramener Murciélago gratuitement.
