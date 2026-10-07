@@ -72,7 +72,7 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR010 | Grimmjow Jaegerjaquez - Pantera | Monstre Synchro/Effet, Niv. 8, 3000/2000 | Terminée |
 | HMUN-FR011 | Coyote Starrk - Le Premier Espada | Monstre à Effet, Niv. 4, 1700/1500 | Texte validé · visuel à venir |
 | HMUN-FR012 | Coyote Starrk - Los Lobos | Monstre Xyz/Effet, Rang 4, 2800/2000 | Terminée |
-| HMUN-FR013 | Lilynette Gingerbuck - La Fracción du Premier Espada | Monstre à Effet, Niv. 4, 1000/1000 | Texte validé · visuel à venir |
+| HMUN-FR013 | Lilynette Gingerbuck - La Fracción du Premier Espada | Monstre à Effet, Niv. 4, 1000/1000 | Terminée (visuel basse résolution, 288×432) |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
