@@ -72,7 +72,7 @@ Impact explosif, Reiatsu écrasant qui ravage tout sur son passage.
 ## Points de vigilance (équilibrage)
 
 - FR003 : destruction ciblée en Jeu-Rapide + dégâts, limitée à 1 activation par tour. N'est pas une Magie « Espada »
-  ni « Las Noches », donc FR001 ne peut pas la chercher (à décider).
+  ni « Las Noches », donc FR001 ne peut pas la chercher. FR001 reste inchangé : une autre carte prévue s'en chargera.
 
 - FR002 : la boucle FR001 → Las Noches → monstre « Ulquiorra Cifer »/« Espada » coûte 1 défausse, c'est le prix voulu.
   La résurrection quand Las Noches quitte le Terrain est limitée au Niveau 4 ou moins pour ne pas ramener Murciélago gratuitement.
