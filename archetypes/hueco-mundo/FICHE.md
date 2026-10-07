@@ -13,6 +13,20 @@ Les cartes et leurs effets suivent les événements du manga *Bleach*. Las Noche
 | Las Noches au Cimetière | Le palais détruit ou déserté, la guerre partie vers Karakura | Conditions de dernier recours, de résurrection, de recyclage |
 | Pas de Las Noches | Les Arrancars hors de leur monde | Effets plus faibles ou désactivés |
 
+### Règle de la Resurrección (inspirée du manga)
+
+Dans le manga, les Espada du rang 4 au rang 0 (les plus puissants) n'ont pas le droit de libérer leur Resurrección
+dans Las Noches : leur puissance détruirait le palais. Dans le jeu :
+
+- **Espada n°4 à n°0** (Ulquiorra 4, Harribel 3, Barragán 2, Starrk 1, Yammy 0) : leur forme Resurrección
+  ne peut être Invoquée Spécialement **que si « Las Noches - Palais du Hueco Mundo » est dans votre Cimetière**.
+  Texte type : « Ne peut être Invoquée Spécialement que si « Las Noches - Palais du Hueco Mundo » est dans votre Cimetière. »
+- **Espada n°5 à n°9** (Nnoitra 5, Grimmjow 6, Zommari 7, Szayel Aporro 8, Aaroniero 9) : libération libre,
+  et ils peuvent même profiter de Las Noches sur le Terrain.
+- La restriction est écrite sur chaque forme Resurrección concernée (une carte ne peut pas lire un numéro qui n'est pas dans un texte).
+- Conséquence de jeu : le deck pose Las Noches pour chercher, puis doit l'envoyer au Cimetière pour libérer ses Espada
+  les plus forts. L'effet de FR002 (« si cette carte est envoyée au Cimetière ») rend ce sacrifice rentable.
+
 Formules officielles à utiliser : « Tant que « Las Noches - Palais du Hueco Mundo » est sur le Terrain, … » et
 « Si « Las Noches - Palais du Hueco Mundo » est dans votre Cimetière : … ».
 
