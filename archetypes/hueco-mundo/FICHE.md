@@ -78,6 +78,7 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR017 | Tier Harribel - Tiburón | Monstre Lien/Effet EAU, LINK-3 (↙ ↓ ↘), 2700 | Terminée |
 | HMUN-FR018 | Las Tres Bestias - Fracciones de la Chimère | Monstre à Effet EAU, Niv. 4, 1500/1500 | Terminée |
 | HMUN-FR019 | Ayon - Monstre de la Calamité | Monstre Fusion/Effet, Niv. 8, 3000/0 | Terminée |
+| HMUN-FR020 | Fracciones - Garde Servile de l'Espada | Monstre à Effet, Niv. 4, 1200/1000 | Texte validé · visuel à venir |
 | HMUN-FR013 | Lilynette Gingerbuck - La Fracción du Premier Espada | Monstre à Effet, Niv. 4, 1000/1000 | Terminée (visuel basse résolution, 288×432) |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
@@ -144,7 +145,9 @@ Espada n°3 : Tiburón exige Las Noches au Cimetière. Harribel s'Invoque depuis
 ou « Fracciones » à la main (pour réutiliser son effet d'Invocation). Tiburón (LINK-3) protège et renforce les
 monstres qu'il pointe, et renvoie des cartes à la main en Effet Rapide.
 Exception d'Attribut : Harribel et Tiburón sont EAU (requin, tsunami) ; ils ne reçoivent pas le bonus de Las Noches.
-Famille « Fracciones » : FR005 et FR018. Las Tres Bestias (FR018) arrive avec 3 Jetons Fracción : Tiburón (LINK-3) se fait
+Famille « Fracciones » : FR005, FR018 et FR020.
+FR020 cherche les « Espada » Niv. 4 ou moins : Ulquiorra (FR001), Grimmjow (FR009), Starrk (FR011), Lilynette (FR013).
+Il ne cherche pas Las Tres Bestias (pas « Espada » dans le nom) et ne peut pas servir de Matériel à Los Lobos (idem). Las Tres Bestias (FR018) arrive avec 3 Jetons Fracción : Tiburón (LINK-3) se fait
 avec Las Tres Bestias + 2 autres monstres « Espada »/« Fracciones » ; les Jetons ne comptent pas (leur nom est « Jeton Fracción »).
 Ayon (FR019) : Fusion de contact, Las Tres Bestias + 3 Jetons Sacrifiés, sans Polymérisation.
 Verrou de FR018 : Extra Deck limité aux monstres Démon ce tour, d'où l'importance de la règle « tous les monstres sont Démon ».

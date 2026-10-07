@@ -465,7 +465,8 @@ let noise = null;
 function noisePattern() {
   if (noise) return noise;
   const n = document.createElement("canvas"); n.width = n.height = 128; const g = n.getContext("2d"); const d = g.createImageData(128, 128);
-  for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 40; }
+  let seed = 1234567; const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff); // grain fixe : même rendu à chaque export
+  for (let i = 0; i < d.data.length; i += 4) { const v = rnd() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 40; }
   g.putImageData(d, 0, 0); noise = ctx.createPattern(n, "repeat"); return noise;
 }
 function rr(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }

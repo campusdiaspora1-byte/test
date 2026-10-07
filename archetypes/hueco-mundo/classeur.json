@@ -856,6 +856,51 @@
    "artZoom": 1,
    "artX": 0,
    "artY": -1
+  },
+  {
+   "id": "hm-020",
+   "lang": "fr",
+   "kind": "monster",
+   "name": "Fracciones - Garde Servile de l'Espada",
+   "nameColor": "auto",
+   "frame": "effect",
+   "attribute": "DARK",
+   "mtype": "Fiend",
+   "level": 4,
+   "pendulum": false,
+   "hasEffect": true,
+   "abilities": {
+    "tuner": false,
+    "flip": false,
+    "gemini": false,
+    "spirit": false,
+    "toon": false,
+    "union": false
+   },
+   "arrows": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "atk": "1200",
+   "def": "1000",
+   "stType": "normal",
+   "text": "Si vous contrôlez un monstre « Espada » ou « Las Noches - Palais du Hueco Mundo », vous pouvez Invoquer Spécialement cette carte (depuis votre main). Vous ne pouvez Invoquer Spécialement « Fracciones - Garde Servile de l'Espada » qu'une fois par tour de cette façon. Si cette carte est Invoquée Normalement ou Spécialement : vous pouvez ajouter 1 monstre « Espada » de Niveau 4 ou moins depuis votre Deck à votre main. Si un monstre « Espada » que vous contrôlez devait être détruit au combat ou par un effet de carte, vous pouvez bannir à la place cette carte de votre Cimetière. Vous ne pouvez utiliser chaque effet de « Fracciones - Garde Servile de l'Espada » qu'une fois par tour.",
+   "pendText": "",
+   "scaleL": 4,
+   "scaleR": 4,
+   "setId": "HMUN-FR020",
+   "passcode": "",
+   "copyright": "Hueco Mundo · fan-made",
+   "art": "",
+   "artZoom": 1,
+   "artX": 0,
+   "artY": 0
   }
  ]
 }
