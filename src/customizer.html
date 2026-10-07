@@ -523,7 +523,8 @@ function render(g, opts = {}) {
     if (artImg) {
       const s = Math.max(a.w / artImg.width, a.h / artImg.height) * card.artZoom;
       const dw = artImg.width * s, dh = artImg.height * s;
-      const dx = a.x + (a.w - dw) / 2 + card.artX * (dw - a.w) / 2, dy = a.y + (a.h - dh) / 2 + card.artY * (dh - a.h) / 2;
+      // -1 = bord gauche / haut de l'image, +1 = bord droit / bas
+      const dx = a.x + (a.w - dw) / 2 - card.artX * (dw - a.w) / 2, dy = a.y + (a.h - dh) / 2 - card.artY * (dh - a.h) / 2;
       g.drawImage(artImg, dx, dy, dw, dh);
     } else {
       const gr = g.createRadialGradient(a.x + a.w / 2, a.y + a.h / 2, 10, a.x + a.w / 2, a.y + a.h / 2, a.w * .7);

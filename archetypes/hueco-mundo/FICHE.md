@@ -19,7 +19,7 @@ Thème : *Bleach*, le monde des Hollows et des Arrancars. Usage : parties amical
 
 | Code | Nom | Catégorie | Statut |
 |---|---|---|---|
-| HMUN-FR001 | Ulquiorra Cifer - Le Quatrième Espada | Monstre à Effet, Niv. 4, 1800/1200 | Texte validé · visuel à venir |
+| HMUN-FR001 | Ulquiorra Cifer - Le Quatrième Espada | Monstre à Effet, Niv. 4, 1800/1200 | Terminée |
 | à venir | « Ulquiorra Cifer » Resurrección : Murciélago | Monstre « Ulquiorra Cifer » Niv. 5+ | Cible de FR001 |
 | à venir | Segunda Etapa | Magie ou Piège « Espada » ? | Boucle de transformation |
 | à venir | Las Noches | Magie de Terrain | Cible de recherche de FR001 |
