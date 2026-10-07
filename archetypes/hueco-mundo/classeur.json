@@ -1,0 +1,35 @@
+{
+ "format": "ygo-atelier",
+ "version": 1,
+ "cards": [
+  {
+   "id": "hm-001",
+   "lang": "fr",
+   "kind": "monster",
+   "name": "Ulquiorra Cifer - Le Quatrième Espada",
+   "nameColor": "auto",
+   "frame": "effect",
+   "attribute": "DARK",
+   "mtype": "Fiend",
+   "level": 4,
+   "pendulum": false,
+   "hasEffect": true,
+   "abilities": { "tuner": false, "flip": false, "gemini": false, "spirit": false, "toon": false, "union": false },
+   "arrows": [false, false, false, false, false, false, false, false],
+   "atk": "1800",
+   "def": "1200",
+   "stType": "normal",
+   "text": "Si cette carte est Invoquée Normalement ou Spécialement : vous pouvez ajouter 1 Magie/Piège « Espada » ou « Las Noches » depuis votre Deck à votre main. (Effet Rapide) : vous pouvez Sacrifier cette carte ; Invoquez Spécialement 1 monstre « Ulquiorra Cifer » de Niveau 5 ou plus depuis votre main, Deck ou Cimetière. Vous ne pouvez utiliser chaque effet de « Ulquiorra Cifer - Le Quatrième Espada » qu'une fois par tour.",
+   "pendText": "",
+   "scaleL": 4,
+   "scaleR": 4,
+   "setId": "HMUN-FR001",
+   "passcode": "",
+   "copyright": "Hueco Mundo · fan-made",
+   "art": "",
+   "artZoom": 1,
+   "artX": 0,
+   "artY": 0
+  }
+ ]
+}
