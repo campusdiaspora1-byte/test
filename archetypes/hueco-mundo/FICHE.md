@@ -2,6 +2,20 @@
 
 Thème : *Bleach*, le monde des Hollows et des Arrancars. Usage : parties amicales, non commercial.
 
+## Principe de conception
+
+Les cartes et leurs effets suivent les événements du manga *Bleach*. Las Noches est l'état du monde :
+**sa présence ou son absence change ce que les cartes peuvent faire.**
+
+| État | Ce qu'il représente dans le manga | Usage dans les effets |
+|---|---|---|
+| Las Noches sur le Terrain | Les Arrancars chez eux, l'arc Hueco Mundo (invasion, combats dans le palais) | Conditions de renforcement, de libération (Resurrección), de recherche |
+| Las Noches au Cimetière | Le palais détruit ou déserté, la guerre partie vers Karakura | Conditions de dernier recours, de résurrection, de recyclage |
+| Pas de Las Noches | Les Arrancars hors de leur monde | Effets plus faibles ou désactivés |
+
+Formules officielles à utiliser : « Tant que « Las Noches - Palais du Hueco Mundo » est sur le Terrain, … » et
+« Si « Las Noches - Palais du Hueco Mundo » est dans votre Cimetière : … ».
+
 ## Identité
 
 - Attribut : TÉNÈBRES.
