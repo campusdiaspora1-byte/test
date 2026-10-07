@@ -271,6 +271,51 @@
    "artZoom": 1,
    "artX": 0,
    "artY": -0.6
+  },
+  {
+   "id": "hm-007",
+   "lang": "fr",
+   "kind": "spell",
+   "name": "Encadénate, Murciélago !",
+   "nameColor": "auto",
+   "frame": "effect",
+   "attribute": "DARK",
+   "mtype": "Fiend",
+   "level": 4,
+   "pendulum": false,
+   "hasEffect": true,
+   "abilities": {
+    "tuner": false,
+    "flip": false,
+    "gemini": false,
+    "spirit": false,
+    "toon": false,
+    "union": false
+   },
+   "arrows": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "atk": "1800",
+   "def": "1200",
+   "stType": "quickplay",
+   "text": "Envoyez au Cimetière 1 « Las Noches - Palais du Hueco Mundo » face recto dans votre Zone Terrain ; Invoquez Spécialement 1 « Ulquiorra Cifer - Murciélago » depuis votre main, Deck ou Cimetière. Vous pouvez bannir cette carte de votre Cimetière, sauf le tour où elle a été envoyée au Cimetière ; ajoutez 1 Magie Jeu-Rapide « Cero » depuis votre Deck ou Cimetière à votre main. Vous ne pouvez utiliser chaque effet de « Encadénate, Murciélago ! » qu'une fois par tour.",
+   "pendText": "",
+   "scaleL": 4,
+   "scaleR": 4,
+   "setId": "HMUN-FR007",
+   "passcode": "",
+   "copyright": "Hueco Mundo · fan-made",
+   "art": "",
+   "artZoom": 1,
+   "artX": 0,
+   "artY": 0
   }
  ]
 }

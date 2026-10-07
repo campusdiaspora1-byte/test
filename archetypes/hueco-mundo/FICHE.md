@@ -53,9 +53,10 @@ Formules officielles à utiliser : « Tant que « Las Noches - Palais du Hueco M
 5. Segunda Etapa menacée → se mélange dans le Deck → ramène FR006 ou FR001.
    Chaque carte est limitée à une fois par tour : la boucle tourne une fois par tour, pas à l'infini.
 
-### Trou dans le plan
-Aucune carte n'envoie encore Las Noches au Cimetière volontairement. Piste : une Magie Jeu-Rapide
-« Encadénate » (formule de libération d'Ulquiorra) qui envoie Las Noches au Cimetière pour Invoquer Murciélago.
+### Envoyer Las Noches au Cimetière
+FR007 « Encadénate, Murciélago ! » envoie Las Noches au Cimetière en coût : FR002 se déclenche (FR001 revient de la
+main ou du Cimetière) et Murciélago arrive en même temps. Au tour suivant, FR007 se bannit pour récupérer une
+Magie Jeu-Rapide « Cero » (FR003).
 
 ## Liste des cartes
 
@@ -65,6 +66,7 @@ Aucune carte n'envoie encore Las Noches au Cimetière volontairement. Piste : un
 | HMUN-FR004 | Ulquiorra Cifer - Segunda Etapa | Monstre à Effet, Niv. 10, 3500/3000, boss | Terminée |
 | HMUN-FR005 | Fracciones - Tir d'Interception | Monstre à Effet, Niv. 3, 1000/1000, handtrap | Terminée |
 | HMUN-FR006 | Ulquiorra Cifer - Murciélago | Monstre à Effet, Niv. 8, 2800/2200 | Terminée |
+| HMUN-FR007 | Encadénate, Murciélago ! | Magie Jeu-Rapide | Texte validé · visuel à venir |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
