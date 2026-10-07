@@ -72,7 +72,7 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR010 | Grimmjow Jaegerjaquez - Pantera | Monstre Synchro/Effet, Niv. 8, 3000/2000 | Terminée |
 | HMUN-FR011 | Coyote Starrk - Le Premier Espada | Monstre à Effet, Niv. 4, 1700/1500 | Texte validé · visuel à venir |
 | HMUN-FR012 | Coyote Starrk - Los Lobos | Monstre Xyz/Effet, Rang 4, 2800/2000 | Terminée |
-| à venir | Lilynette Gingerbuck | Monstre Niv. 4, nom avec « Espada » | Cible de FR011, Matériel de FR012 |
+| HMUN-FR013 | Lilynette Gingerbuck - La Fracción du Premier Espada | Monstre à Effet, Niv. 4, 1000/1000 | Texte validé · visuel à venir |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
@@ -124,8 +124,8 @@ Grimmjow et Pantera sont Démon TÉNÈBRES : ils reçoivent le bonus de Las Noch
 ### Voie Starrk (Xyz)
 Starrk et Lilynette, une âme en deux corps : Starrk Invoque Lilynette, les deux (Niv. 4, « Espada ») deviennent
 Los Lobos (Rang 4). Espada n°1 : Los Lobos exige Las Noches au Cimetière.
-Lilynette doit être un monstre Niv. 4 dont le nom contient « Lilynette Gingerbuck » et « Espada »,
-sinon elle ne peut pas servir de Matériel à Los Lobos.
+Lilynette (FR013) cherche une Magie Jeu-Rapide « Cero » quand elle devient Matériel ou va au Cimetière, et
+protège Los Lobos tant qu'elle reste attachée : détacher Lilynette pour Cero Metralleta retire cette protection.
 
 ## Points de vigilance (équilibrage)
 
