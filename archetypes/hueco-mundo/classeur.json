@@ -226,6 +226,51 @@
    "artZoom": 1,
    "artX": -0.5,
    "artY": 0
+  },
+  {
+   "id": "hm-006",
+   "lang": "fr",
+   "kind": "monster",
+   "name": "Ulquiorra Cifer - Murciélago",
+   "nameColor": "auto",
+   "frame": "effect",
+   "attribute": "DARK",
+   "mtype": "Fiend",
+   "level": 8,
+   "pendulum": false,
+   "hasEffect": true,
+   "abilities": {
+    "tuner": false,
+    "flip": false,
+    "gemini": false,
+    "spirit": false,
+    "toon": false,
+    "union": false
+   },
+   "arrows": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "atk": "2800",
+   "def": "2200",
+   "stType": "normal",
+   "text": "Ne peut pas être Invoquée Normalement ni Posée. Ne peut être Invoquée Spécialement que si « Las Noches - Palais du Hueco Mundo » est dans votre Cimetière. Vous pouvez Invoquer Spécialement cette carte (depuis votre main ou votre Cimetière). Vous ne pouvez Invoquer Spécialement « Ulquiorra Cifer - Murciélago » qu'une fois par tour de cette façon. (Effet Rapide) : vous pouvez cibler 1 carte face recto contrôlée par votre adversaire ; annulez ses effets jusqu'à la fin de ce tour. Pendant votre Main Phase ou Battle Phase (Effet Rapide) : vous pouvez Sacrifier cette carte ; Invoquez Spécialement 1 « Ulquiorra Cifer - Segunda Etapa » depuis votre main, Deck ou Cimetière. Vous ne pouvez utiliser chaque effet de « Ulquiorra Cifer - Murciélago » qu'une fois par tour.",
+   "pendText": "",
+   "scaleL": 4,
+   "scaleR": 4,
+   "setId": "HMUN-FR006",
+   "passcode": "",
+   "copyright": "Hueco Mundo · fan-made",
+   "art": "",
+   "artZoom": 1,
+   "artX": 0,
+   "artY": 0
   }
  ]
 }

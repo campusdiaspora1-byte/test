@@ -45,10 +45,17 @@ Formules officielles à utiliser : « Tant que « Las Noches - Palais du Hueco M
 4. Boucle de régénération : Segunda Etapa se mélange dans le Deck pour Invoquer un autre monstre « Ulquiorra Cifer »
    (souvent Murciélago), qui pourra la rappeler. Clin d'œil à la régénération à haute vitesse d'Ulquiorra.
 
-### Ce que Murciélago doit contenir (contraintes des autres cartes)
-- Niveau 5 ou plus, nom contenant « Ulquiorra Cifer ».
-- « Ne peut être Invoquée Spécialement que si « Las Noches - Palais du Hueco Mundo » est dans votre Cimetière. » (Espada n°4)
-- Un effet qui Invoque Spécialement « Ulquiorra Cifer - Segunda Etapa » (sinon FR004 ne peut jamais sortir).
+### Combo de base (Las Noches au Cimetière)
+1. Las Noches quitte le Terrain pour le Cimetière → FR002 Invoque Spécialement FR001 depuis la main ou le Cimetière.
+2. FR001 Invoqué → cherche une Magie/Piège « Espada » ou « Las Noches ».
+3. FR001 se Sacrifie (Effet Rapide) → FR006 Murciélago depuis le Deck.
+4. FR006 se Sacrifie → FR004 Segunda Etapa.
+5. Segunda Etapa menacée → se mélange dans le Deck → ramène FR006 ou FR001.
+   Chaque carte est limitée à une fois par tour : la boucle tourne une fois par tour, pas à l'infini.
+
+### Trou dans le plan
+Aucune carte n'envoie encore Las Noches au Cimetière volontairement. Piste : une Magie Jeu-Rapide
+« Encadénate » (formule de libération d'Ulquiorra) qui envoie Las Noches au Cimetière pour Invoquer Murciélago.
 
 ## Liste des cartes
 
@@ -57,7 +64,7 @@ Formules officielles à utiliser : « Tant que « Las Noches - Palais du Hueco M
 | HMUN-FR001 | Ulquiorra Cifer - Le Quatrième Espada | Monstre à Effet, Niv. 4, 1800/1200 | Terminée |
 | HMUN-FR004 | Ulquiorra Cifer - Segunda Etapa | Monstre à Effet, Niv. 10, 3500/3000, boss | Terminée |
 | HMUN-FR005 | Fracciones - Tir d'Interception | Monstre à Effet, Niv. 3, 1000/1000, handtrap | Terminée |
-| à venir | Ulquiorra Cifer - Murciélago | Monstre « Ulquiorra Cifer » Niv. 5+ | Cible de FR001, doit invoquer FR004 |
+| HMUN-FR006 | Ulquiorra Cifer - Murciélago | Monstre à Effet, Niv. 8, 2800/2200 | Texte validé · visuel à venir |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
@@ -87,7 +94,12 @@ Deux Fracciones (Emilou Apacci, Franceska Mila Rose ou Cyan Sung-Sun) tirent en 
 une attaque. Ciel nocturne du Hueco Mundo fissuré par la collision de deux énergies ; faisceaux verts et rouges
 croisés au premier plan. Ambiance dynamique, réaction instantanée.
 
+### HMUN-FR006 · Ulquiorra Cifer - Murciélago
+Visuel à recevoir.
+
 ## Points de vigilance (équilibrage)
+
+- FR006 : pas de « Doit d'abord être Invoquée Spécialement… », sinon FR001 ne pourrait pas la sortir du Deck.
 
 - FR005 : annulation + recherche. Limitée aux effets de monstre sur le Terrain (pas les Magies/Pièges) pour rester
   du niveau des handtraps officiels. Son nom ne contient ni « Espada » ni « Ulquiorra Cifer » : Las Noches ne peut pas la chercher.
