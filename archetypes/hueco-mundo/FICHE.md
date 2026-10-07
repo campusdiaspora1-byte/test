@@ -67,7 +67,7 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR005 | Fracciones - Tir d'Interception | Monstre à Effet, Niv. 3, 1000/1000, handtrap | Terminée |
 | HMUN-FR006 | Ulquiorra Cifer - Murciélago | Monstre à Effet, Niv. 8, 2800/2200 | Terminée |
 | HMUN-FR007 | Encadénate, Murciélago ! | Magie Jeu-Rapide | Terminée |
-| HMUN-FR008 | Dominance du Vasto Lorde | Piège Continu | Texte validé (version équilibrée) · visuel à venir |
+| HMUN-FR008 | Dominance du Vasto Lorde | Piège Continu | Terminée (version équilibrée) |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
