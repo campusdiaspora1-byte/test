@@ -74,6 +74,8 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR012 | Coyote Starrk - Los Lobos | Monstre Xyz/Effet, Rang 4, 2800/2000 | Terminée |
 | HMUN-FR014 | Barragán Luisenbarn - Le Second Espada | Monstre à Effet, Niv. 7, 2600/2000 | Texte validé · visuel à venir |
 | HMUN-FR015 | Barragán Luisenbarn - Arrogante | Monstre Fusion/Effet, Niv. 9, 3200/2500 | Texte validé · visuel à venir |
+| HMUN-FR016 | Tier Harribel - La Troisième Espada | Monstre à Effet EAU, Niv. 5, 2100/1400 | Texte validé · visuel à venir |
+| HMUN-FR017 | Tier Harribel - Tiburón | Monstre Lien/Effet EAU, LINK-3 (↙ ↓ ↘), 2700 | Texte validé · visuel à venir |
 | HMUN-FR013 | Lilynette Gingerbuck - La Fracción du Premier Espada | Monstre à Effet, Niv. 4, 1000/1000 | Terminée (visuel basse résolution, 288×432) |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
@@ -134,6 +136,13 @@ Espada n°2 : Arrogante exige Las Noches au Cimetière. Pas de Magie Polymérisa
 avec 1 autre Démon (main ou Terrain) en Effet Rapide pour Invoquer Arrogante par Fusion.
 Arrogante pose 1 Compteur Vieillesse par tour sur une carte adverse : effets annulés, -1000 ATK/DEF par compteur,
 envoi au Cimetière à 0 ATK. Les compteurs s'accumulent tour après tour, comme le temps qui use tout.
+
+### Voie Harribel (Lien, meute)
+Espada n°3 : Tiburón exige Las Noches au Cimetière. Harribel s'Invoque depuis la main en renvoyant un « Espada »
+ou « Fracciones » à la main (pour réutiliser son effet d'Invocation). Tiburón (LINK-3) protège et renforce les
+monstres qu'il pointe, et renvoie des cartes à la main en Effet Rapide.
+Exception d'Attribut : Harribel et Tiburón sont EAU (requin, tsunami) ; ils ne reçoivent pas le bonus de Las Noches.
+Famille « Fracciones » : FR005 en fait partie ; les Fracciones d'Harribel (Apacci, Mila Rose, Sung-Sun) sont à venir.
 
 ## Points de vigilance (équilibrage)
 
