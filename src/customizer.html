@@ -678,8 +678,8 @@ function drawTexts(g, G, dark) {
     if (fitText(g, card.text, body, { max: 19, min: 9, italic: card.frame === "normal" })) overflow = true;
     g.strokeStyle = "#111"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(d.x + 14, d.y + d.h - 36); g.lineTo(d.x + d.w - 14, d.y + d.h - 36); g.stroke();
     g.font = `700 22px "Spectral", Georgia, serif`; g.textAlign = "right";
-    const atk = `ATK/${String(card.atk).padStart(4, " ")}`;
-    const right = card.frame === "link" ? `LINK-${linkRating()}` : `DEF/${String(card.def).padStart(4, " ")}`;
+    const atk = `ATK/${card.atk}`;
+    const right = card.frame === "link" ? `LINK-${linkRating()}` : `DEF/${card.def}`;
     g.fillText(right, d.x + d.w - 16, d.y + d.h - 11); const rw = g.measureText(right).width;
     g.fillText(atk, d.x + d.w - 16 - rw - 26, d.y + d.h - 11);
   } else {
