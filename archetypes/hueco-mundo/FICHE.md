@@ -67,6 +67,7 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR005 | Fracciones - Tir d'Interception | Monstre à Effet, Niv. 3, 1000/1000, handtrap | Terminée |
 | HMUN-FR006 | Ulquiorra Cifer - Murciélago | Monstre à Effet, Niv. 8, 2800/2200 | Terminée |
 | HMUN-FR007 | Encadénate, Murciélago ! | Magie Jeu-Rapide | Terminée |
+| HMUN-FR008 | Dominance du Vasto Lorde | Piège Continu | Texte validé (version équilibrée) · visuel à venir |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
@@ -104,7 +105,16 @@ sous le croissant de lune au-dessus des tours de Las Noches.
 Ulquiorra agenouillé, enchaîné de chaînes noires veinées de vert, tête baissée sous un croissant de lune noir,
 devant les tours sombres de Las Noches qui se reflètent dans l'eau.
 
+### HMUN-FR008 · Dominance du Vasto Lorde
+Ichigo en Vasto Lorde (masque à cornes, longs cheveux noirs, trou de Hollow au poitrail) saisit d'une main le visage
+ou la corne d'Ulquiorra Segunda Etapa, les yeux rouge sang, un Cero rouge se chargeant devant son masque. Ruines du
+dôme de Las Noches dans un Reiatsu rouge et noir instable. Terreur, basculement de puissance.
+
 ## Points de vigilance (équilibrage)
+
+- FR008 : version d'origine (annulation + ATK 0 + destruction + dommages égaux à l'ATK, sans limite, et Segunda Etapa
+  depuis le Deck en ignorant ses conditions) jugée trop forte. Version retenue : 1 effet au choix, une fois par tour,
+  dommages divisés par 2, Segunda Etapa seulement depuis le Cimetière en respectant ses conditions.
 
 - OTK possible via FR007 en Battle Phase (1800 + 2800 + 3500 + 1000 de la Lanza = 9100). Frein : FR007 ne peut être
   cherchée par aucune carte, il faut la piocher.

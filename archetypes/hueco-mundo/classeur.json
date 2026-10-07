@@ -316,6 +316,51 @@
    "artZoom": 1,
    "artX": 0,
    "artY": 0
+  },
+  {
+   "id": "hm-008",
+   "lang": "fr",
+   "kind": "trap",
+   "name": "Dominance du Vasto Lorde",
+   "nameColor": "auto",
+   "frame": "effect",
+   "attribute": "DARK",
+   "mtype": "Fiend",
+   "level": 4,
+   "pendulum": false,
+   "hasEffect": true,
+   "abilities": {
+    "tuner": false,
+    "flip": false,
+    "gemini": false,
+    "spirit": false,
+    "toon": false,
+    "union": false
+   },
+   "arrows": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "atk": "1800",
+   "def": "1200",
+   "stType": "continuous",
+   "text": "Une fois par tour, lorsque votre adversaire Invoque Spécialement un monstre avec 3000 ATK ou plus pendant que vous contrôlez un monstre « Ulquiorra Cifer », ou lorsqu'un monstre de votre adversaire déclare une attaque sur un monstre « Ulquiorra Cifer » que vous contrôlez : vous pouvez activer 1 de ces effets ;\n● Les effets de tous les monstres contrôlés par votre adversaire sont annulés, et leur ATK devient 0, jusqu'à la fin de ce tour.\n● Détruisez le monstre avec l'ATK d'origine la plus élevée contrôlé par votre adversaire (à votre choix en cas d'égalité), et si vous le faites, infligez à votre adversaire des dommages égaux à la moitié de son ATK d'origine.\nSi cette carte dans votre Zone Magie & Piège est détruite par un effet de carte de votre adversaire : vous pouvez Invoquer Spécialement 1 « Ulquiorra Cifer - Segunda Etapa » depuis votre Cimetière, en respectant ses conditions d'Invocation. Vous ne pouvez utiliser cet effet de « Dominance du Vasto Lorde » qu'une fois par tour.",
+   "pendText": "",
+   "scaleL": 4,
+   "scaleR": 4,
+   "setId": "HMUN-FR008",
+   "passcode": "",
+   "copyright": "Hueco Mundo · fan-made",
+   "art": "",
+   "artZoom": 1,
+   "artX": 0,
+   "artY": 0
   }
  ]
 }
