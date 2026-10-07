@@ -66,7 +66,7 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR004 | Ulquiorra Cifer - Segunda Etapa | Monstre à Effet, Niv. 10, 3500/3000, boss | Terminée |
 | HMUN-FR005 | Fracciones - Tir d'Interception | Monstre à Effet, Niv. 3, 1000/1000, handtrap | Terminée |
 | HMUN-FR006 | Ulquiorra Cifer - Murciélago | Monstre à Effet, Niv. 8, 2800/2200 | Terminée |
-| HMUN-FR007 | Encadénate, Murciélago ! | Magie Jeu-Rapide | Texte validé · visuel à venir |
+| HMUN-FR007 | Encadénate, Murciélago ! | Magie Jeu-Rapide | Terminée |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
@@ -100,7 +100,14 @@ croisés au premier plan. Ambiance dynamique, réaction instantanée.
 Première libération : ailes de chauve-souris noires, cornes, demi-masque, bras griffu tendu vers l'adversaire,
 sous le croissant de lune au-dessus des tours de Las Noches.
 
+### HMUN-FR007 · Encadénate, Murciélago !
+Ulquiorra agenouillé, enchaîné de chaînes noires veinées de vert, tête baissée sous un croissant de lune noir,
+devant les tours sombres de Las Noches qui se reflètent dans l'eau.
+
 ## Points de vigilance (équilibrage)
+
+- OTK possible via FR007 en Battle Phase (1800 + 2800 + 3500 + 1000 de la Lanza = 9100). Frein : FR007 ne peut être
+  cherchée par aucune carte, il faut la piocher.
 
 - FR006 : pas de « Doit d'abord être Invoquée Spécialement… », sinon FR001 ne pourrait pas la sortir du Deck.
 
