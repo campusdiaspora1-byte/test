@@ -136,6 +136,51 @@
    "artZoom": 1,
    "artX": -1,
    "artY": 0
+  },
+  {
+   "id": "hm-004",
+   "lang": "fr",
+   "kind": "monster",
+   "name": "Ulquiorra Cifer - Segunda Etapa",
+   "nameColor": "auto",
+   "frame": "effect",
+   "attribute": "DARK",
+   "mtype": "Fiend",
+   "level": 10,
+   "pendulum": false,
+   "hasEffect": true,
+   "abilities": {
+    "tuner": false,
+    "flip": false,
+    "gemini": false,
+    "spirit": false,
+    "toon": false,
+    "union": false
+   },
+   "arrows": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "atk": "3500",
+   "def": "3000",
+   "stType": "normal",
+   "text": "Ne peut pas être Invoquée Normalement ni Posée. Doit d'abord être Invoquée Spécialement par l'effet de « Ulquiorra Cifer - Murciélago ». Ne peut être Invoquée Spécialement que si « Las Noches - Palais du Hueco Mundo » est dans votre Cimetière. Les monstres contrôlés par votre adversaire perdent 800 ATK/DEF et ne peuvent pas changer leur position de combat. (Effet Rapide) : vous pouvez défausser 1 carte ; détruisez toutes les cartes contrôlées par votre adversaire dans la colonne de cette carte et dans les colonnes adjacentes, et si vous le faites, infligez 1000 dommages à votre adversaire. Au début de la Damage Step, si cette carte combat, ou si « Las Noches - Palais du Hueco Mundo » est dans votre Cimetière (Effet Rapide) : vous pouvez mélanger cette carte dans le Deck ; Invoquez Spécialement 1 monstre « Ulquiorra Cifer » depuis votre main, Deck ou Cimetière, en respectant ses conditions d'Invocation. Vous ne pouvez utiliser chaque effet de « Ulquiorra Cifer - Segunda Etapa » qu'une fois par tour.",
+   "pendText": "",
+   "scaleL": 4,
+   "scaleR": 4,
+   "setId": "HMUN-FR004",
+   "passcode": "",
+   "copyright": "Hueco Mundo · fan-made",
+   "art": "",
+   "artZoom": 1,
+   "artX": 0,
+   "artY": 0
   }
  ]
 }

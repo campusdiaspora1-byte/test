@@ -418,7 +418,9 @@ function validate() {
     }
     if (f === "link" && !card.hasEffect) I("Les monstres Lien sans effet sont rares mais autorisés.");
     if (f === "ritual") I("Un monstre Rituel s'Invoque avec une Carte Magie Rituelle : pensez à la créer aussi.");
-    if (!EXTRA.has(f) && f !== "token" && f !== "ritual" && lv >= 5) I(`Niveau ${lv} : Invocation Normale par Sacrifice de ${lv >= 7 ? 2 : 1} monstre${lv >= 7 ? "s" : ""}.`);
+    const nomi = /ne peut pas être invoqué(?:e)? normalement|cannot be normal summoned/i.test(txt);
+    if (nomi && /invoqué(?:e)? spécialement par|special summoned by/i.test(txt)) I("Invocation spéciale uniquement : la carte ne peut sortir qu'avec l'effet cité, puis peut être ressuscitée normalement.");
+    if (!nomi && !EXTRA.has(f) && f !== "token" && f !== "ritual" && lv >= 5) I(`Niveau ${lv} : Invocation Normale par Sacrifice de ${lv >= 7 ? 2 : 1} monstre${lv >= 7 ? "s" : ""}.`);
     if (!EXTRA.has(f) && f !== "token" && lv <= 4 && /^\d+$/.test(card.atk) && +card.atk >= 2100 && hasEffectText()) I("Équilibrage : ATK élevée pour un Niveau 4 ou moins à effet. À tester entre amis.");
 
     if (card.pendulum) {

@@ -41,15 +41,22 @@ Formules officielles à utiliser : « Tant que « Las Noches - Palais du Hueco M
 
 1. Un starter de Niveau 4 (Ulquiorra) est Invoqué Normalement et cherche une Magie/Piège « Espada » ou le Terrain « Las Noches ».
 2. En Effet Rapide, il se Sacrifie pour Invoquer Spécialement sa forme supérieure (Resurrección : *Murciélago*), même pendant le tour adverse.
-3. *Segunda Etapa* prolonge la chaîne de transformation (boucle à définir).
+3. Murciélago Invoque Spécialement *Segunda Etapa* (Niv. 10), le boss, une fois Las Noches au Cimetière.
+4. Boucle de régénération : Segunda Etapa se mélange dans le Deck pour Invoquer un autre monstre « Ulquiorra Cifer »
+   (souvent Murciélago), qui pourra la rappeler. Clin d'œil à la régénération à haute vitesse d'Ulquiorra.
+
+### Ce que Murciélago doit contenir (contraintes des autres cartes)
+- Niveau 5 ou plus, nom contenant « Ulquiorra Cifer ».
+- « Ne peut être Invoquée Spécialement que si « Las Noches - Palais du Hueco Mundo » est dans votre Cimetière. » (Espada n°4)
+- Un effet qui Invoque Spécialement « Ulquiorra Cifer - Segunda Etapa » (sinon FR004 ne peut jamais sortir).
 
 ## Liste des cartes
 
 | Code | Nom | Catégorie | Statut |
 |---|---|---|---|
 | HMUN-FR001 | Ulquiorra Cifer - Le Quatrième Espada | Monstre à Effet, Niv. 4, 1800/1200 | Terminée |
-| à venir | « Ulquiorra Cifer » Resurrección : Murciélago | Monstre « Ulquiorra Cifer » Niv. 5+ | Cible de FR001 |
-| à venir | Segunda Etapa | Magie ou Piège « Espada » ? | Boucle de transformation |
+| HMUN-FR004 | Ulquiorra Cifer - Segunda Etapa | Monstre à Effet, Niv. 10, 3500/3000, boss | Texte validé · visuel à venir |
+| à venir | Ulquiorra Cifer - Murciélago | Monstre « Ulquiorra Cifer » Niv. 5+ | Cible de FR001, doit invoquer FR004 |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
@@ -69,7 +76,15 @@ nocturne étoilé et un croissant de lune inversé. Contours marqués, éclairag
 Le tir du Cero Oscuras : une immense vague d'énergie ténébreuse bordée de lueurs vert néon qui perce la nuit.
 Impact explosif, Reiatsu écrasant qui ravage tout sur son passage.
 
+### HMUN-FR004 · Ulquiorra Cifer - Segunda Etapa
+Seconde libération : fourrure noire sur le bas du corps, longues cornes noires, grandes ailes de chauve-souris.
+Il brandit la Lanza del Relámpago, lance d'énergie verte prête à être lancée. Toit détruit du dôme de Las Noches,
+pluie de pression spirituelle sous un ciel noir et vert.
+
 ## Points de vigilance (équilibrage)
+
+- FR004 : boss très fort (affaiblissement permanent, destruction de 3 colonnes en Effet Rapide, fuite vers le Deck).
+  Son coût : il faut FR001 → Murciélago → FR004 avec Las Noches au Cimetière. La Lanza ne touche que les cartes adverses.
 
 - FR003 : destruction ciblée en Jeu-Rapide + dégâts, limitée à 1 activation par tour. N'est pas une Magie « Espada »
   ni « Las Noches », donc FR001 ne peut pas la chercher. FR001 reste inchangé : une autre carte prévue s'en chargera.
