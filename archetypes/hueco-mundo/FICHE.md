@@ -69,7 +69,7 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR007 | Encadénate, Murciélago ! | Magie Jeu-Rapide | Terminée |
 | HMUN-FR008 | Dominance du Vasto Lorde | Piège Continu | Terminée (version équilibrée) |
 | HMUN-FR009 | Grimmjow Jaegerjaquez - Le Sixième Espada | Monstre Syntoniseur/Effet, Niv. 4, 1900/1000 | Terminée |
-| HMUN-FR010 | Grimmjow Jaegerjaquez - Pantera | Monstre Synchro/Effet, Niv. 8, 3000/2000 | Texte validé · visuel à venir |
+| HMUN-FR010 | Grimmjow Jaegerjaquez - Pantera | Monstre Synchro/Effet, Niv. 8, 3000/2000 | Terminée |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
