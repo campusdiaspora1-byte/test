@@ -56,6 +56,7 @@ Formules officielles à utiliser : « Tant que « Las Noches - Palais du Hueco M
 |---|---|---|---|
 | HMUN-FR001 | Ulquiorra Cifer - Le Quatrième Espada | Monstre à Effet, Niv. 4, 1800/1200 | Terminée |
 | HMUN-FR004 | Ulquiorra Cifer - Segunda Etapa | Monstre à Effet, Niv. 10, 3500/3000, boss | Terminée |
+| HMUN-FR005 | Fracciones - Tir d'Interception | Monstre à Effet, Niv. 3, 1000/1000, handtrap | Texte validé · visuel à venir |
 | à venir | Ulquiorra Cifer - Murciélago | Monstre « Ulquiorra Cifer » Niv. 5+ | Cible de FR001, doit invoquer FR004 |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
@@ -81,13 +82,22 @@ Seconde libération : fourrure noire sur le bas du corps, longues cornes noires,
 Il brandit la Lanza del Relámpago, lance d'énergie verte prête à être lancée. Toit détruit du dôme de Las Noches,
 pluie de pression spirituelle sous un ciel noir et vert.
 
+### HMUN-FR005 · Fracciones - Tir d'Interception
+Deux Fracciones (Emilou Apacci, Franceska Mila Rose ou Cyan Sung-Sun) tirent en urgence un Cero combiné pour bloquer
+une attaque. Ciel nocturne du Hueco Mundo fissuré par la collision de deux énergies ; faisceaux verts et rouges
+croisés au premier plan. Ambiance dynamique, réaction instantanée.
+
 ## Points de vigilance (équilibrage)
+
+- FR005 : annulation + recherche. Limitée aux effets de monstre sur le Terrain (pas les Magies/Pièges) pour rester
+  du niveau des handtraps officiels. Son nom ne contient ni « Espada » ni « Ulquiorra Cifer » : Las Noches ne peut pas la chercher.
+- Famille « Cero » : toute carte dont le nom contient « Cero » (FR003 aujourd'hui).
 
 - FR004 : boss très fort (affaiblissement permanent, destruction de 3 colonnes en Effet Rapide, fuite vers le Deck).
   Son coût : il faut FR001 → Murciélago → FR004 avec Las Noches au Cimetière. La Lanza ne touche que les cartes adverses.
 
 - FR003 : destruction ciblée en Jeu-Rapide + dégâts, limitée à 1 activation par tour. N'est pas une Magie « Espada »
-  ni « Las Noches », donc FR001 ne peut pas la chercher. FR001 reste inchangé : une autre carte prévue s'en chargera.
+  ni « Las Noches », donc FR001 ne peut pas la chercher. FR005 (Fracciones) cherche les cartes « Cero ».
 
 - FR002 : la boucle FR001 → Las Noches → monstre « Ulquiorra Cifer »/« Espada » coûte 1 défausse, c'est le prix voulu.
   La résurrection quand Las Noches quitte le Terrain est limitée au Niveau 4 ou moins pour ne pas ramener Murciélago gratuitement.
