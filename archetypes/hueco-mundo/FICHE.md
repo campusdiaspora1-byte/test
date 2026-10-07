@@ -64,7 +64,7 @@ Aucune carte n'envoie encore Las Noches au Cimetière volontairement. Piste : un
 | HMUN-FR001 | Ulquiorra Cifer - Le Quatrième Espada | Monstre à Effet, Niv. 4, 1800/1200 | Terminée |
 | HMUN-FR004 | Ulquiorra Cifer - Segunda Etapa | Monstre à Effet, Niv. 10, 3500/3000, boss | Terminée |
 | HMUN-FR005 | Fracciones - Tir d'Interception | Monstre à Effet, Niv. 3, 1000/1000, handtrap | Terminée |
-| HMUN-FR006 | Ulquiorra Cifer - Murciélago | Monstre à Effet, Niv. 8, 2800/2200 | Texte validé · visuel à venir |
+| HMUN-FR006 | Ulquiorra Cifer - Murciélago | Monstre à Effet, Niv. 8, 2800/2200 | Terminée |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
@@ -95,7 +95,8 @@ une attaque. Ciel nocturne du Hueco Mundo fissuré par la collision de deux éne
 croisés au premier plan. Ambiance dynamique, réaction instantanée.
 
 ### HMUN-FR006 · Ulquiorra Cifer - Murciélago
-Visuel à recevoir.
+Première libération : ailes de chauve-souris noires, cornes, demi-masque, bras griffu tendu vers l'adversaire,
+sous le croissant de lune au-dessus des tours de Las Noches.
 
 ## Points de vigilance (équilibrage)
 
