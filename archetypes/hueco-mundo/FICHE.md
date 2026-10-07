@@ -51,7 +51,7 @@ Formules officielles à utiliser : « Tant que « Las Noches - Palais du Hueco M
 | à venir | « Ulquiorra Cifer » Resurrección : Murciélago | Monstre « Ulquiorra Cifer » Niv. 5+ | Cible de FR001 |
 | à venir | Segunda Etapa | Magie ou Piège « Espada » ? | Boucle de transformation |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
-| HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Texte validé · visuel à venir |
+| HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
 ## Brief visuel
 
