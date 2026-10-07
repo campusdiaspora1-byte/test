@@ -79,7 +79,7 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR018 | Las Tres Bestias - Fracciones de la Chimère | Monstre à Effet EAU, Niv. 4, 1500/1500 | Terminée |
 | HMUN-FR019 | Ayon - Monstre de la Calamité | Monstre Fusion/Effet, Niv. 8, 3000/0 | Terminée |
 | HMUN-FR020 | Fracciones - Garde Servile de l'Espada | Monstre à Effet, Niv. 4, 1200/1000 | Terminée |
-| HMUN-FR021 | Laboratoire de l'Octava Espada - Modification Organique | Magie Continue | Texte validé · visuel à venir |
+| HMUN-FR021 | Laboratoire de l'Octava Espada - Modification Organique | Magie Continue | Terminée |
 | HMUN-FR013 | Lilynette Gingerbuck - La Fracción du Premier Espada | Monstre à Effet, Niv. 4, 1000/1000 | Terminée (visuel basse résolution, 288×432) |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
