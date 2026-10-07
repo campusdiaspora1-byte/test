@@ -72,6 +72,8 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR010 | Grimmjow Jaegerjaquez - Pantera | Monstre Synchro/Effet, Niv. 8, 3000/2000 | Terminée |
 | HMUN-FR011 | Coyote Starrk - Le Premier Espada | Monstre à Effet, Niv. 4, 1700/1500 | Terminée (visuel 736×736) |
 | HMUN-FR012 | Coyote Starrk - Los Lobos | Monstre Xyz/Effet, Rang 4, 2800/2000 | Terminée |
+| HMUN-FR014 | Barragán Luisenbarn - Le Second Espada | Monstre à Effet, Niv. 7, 2600/2000 | Texte validé · visuel à venir |
+| HMUN-FR015 | Barragán Luisenbarn - Arrogante | Monstre Fusion/Effet, Niv. 9, 3200/2500 | Texte validé · visuel à venir |
 | HMUN-FR013 | Lilynette Gingerbuck - La Fracción du Premier Espada | Monstre à Effet, Niv. 4, 1000/1000 | Terminée (visuel basse résolution, 288×432) |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
@@ -127,7 +129,15 @@ Los Lobos (Rang 4). Espada n°1 : Los Lobos exige Las Noches au Cimetière.
 Lilynette (FR013) cherche une Magie Jeu-Rapide « Cero » quand elle devient Matériel ou va au Cimetière, et
 protège Los Lobos tant qu'elle reste attachée : détacher Lilynette pour Cero Metralleta retire cette protection.
 
+### Voie Barragán (Fusion, sénescence)
+Espada n°2 : Arrogante exige Las Noches au Cimetière. Pas de Magie Polymérisation : Barragán s'envoie au Cimetière
+avec 1 autre Démon (main ou Terrain) en Effet Rapide pour Invoquer Arrogante par Fusion.
+Arrogante pose 1 Compteur Vieillesse par tour sur une carte adverse : effets annulés, -1000 ATK/DEF par compteur,
+envoi au Cimetière à 0 ATK. Les compteurs s'accumulent tour après tour, comme le temps qui use tout.
+
 ## Points de vigilance (équilibrage)
+
+- FR015 : Respira limitée à une fois par tour (sans limite, elle annulait tout le Terrain adverse en un tour).
 
 - FR012 : dommages ramenés de 500 par carte sur le Terrain (souvent 4000+) à 300 par carte de l'adversaire ;
   dommages de la riposte divisés par 2, comme FR008.
