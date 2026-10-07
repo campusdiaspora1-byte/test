@@ -70,6 +70,9 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR008 | Dominance du Vasto Lorde | Piège Continu | Terminée (version équilibrée) |
 | HMUN-FR009 | Grimmjow Jaegerjaquez - Le Sixième Espada | Monstre Syntoniseur/Effet, Niv. 4, 1900/1000 | Terminée |
 | HMUN-FR010 | Grimmjow Jaegerjaquez - Pantera | Monstre Synchro/Effet, Niv. 8, 3000/2000 | Terminée |
+| HMUN-FR011 | Coyote Starrk - Le Premier Espada | Monstre à Effet, Niv. 4, 1700/1500 | Texte validé · visuel à venir |
+| HMUN-FR012 | Coyote Starrk - Los Lobos | Monstre Xyz/Effet, Rang 4, 2800/2000 | Texte validé · visuel à venir |
+| à venir | Lilynette Gingerbuck | Monstre Niv. 4, nom avec « Espada » | Cible de FR011, Matériel de FR012 |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
 
@@ -118,7 +121,16 @@ Grimmjow (Syntoniseur Niv. 4) + 1 monstre Niv. 4 → Pantera (Synchro Niv. 8), q
 puis attaque tous les monstres adverses avec dommages perçants.
 Grimmjow et Pantera sont Démon TÉNÈBRES : ils reçoivent le bonus de Las Noches (+300 ATK/DEF).
 
+### Voie Starrk (Xyz)
+Starrk et Lilynette, une âme en deux corps : Starrk Invoque Lilynette, les deux (Niv. 4, « Espada ») deviennent
+Los Lobos (Rang 4). Espada n°1 : Los Lobos exige Las Noches au Cimetière.
+Lilynette doit être un monstre Niv. 4 dont le nom contient « Lilynette Gingerbuck » et « Espada »,
+sinon elle ne peut pas servir de Matériel à Los Lobos.
+
 ## Points de vigilance (équilibrage)
+
+- FR012 : dommages ramenés de 500 par carte sur le Terrain (souvent 4000+) à 300 par carte de l'adversaire ;
+  dommages de la riposte divisés par 2, comme FR008.
 
 - FR008 : version d'origine (annulation + ATK 0 + destruction + dommages égaux à l'ATK, sans limite, et Segunda Etapa
   depuis le Deck en ignorant ses conditions) jugée trop forte. Version retenue : 1 effet au choix, une fois par tour,

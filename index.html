@@ -448,8 +448,9 @@ function validate() {
     const c = s.indexOf(":"), sc = s.indexOf(";");
     if (c > -1 && sc > -1 && sc < c) W(`Syntaxe : la condition (« : ») vient avant le coût (« ; »). Phrase : « ${s.trim().slice(0, 60)}… »`);
   });
-  const quoted = [...all.matchAll(/[«"]\s*([^»"]+?)\s*[»"]/g)].map((m) => m[1]);
-  if (/une fois par tour|once per turn/i.test(all) && quoted.length && name && !quoted.some((q) => q.toLowerCase() === name.toLowerCase()))
+  // seules les clauses qui nomment la carte doivent citer son nom exact
+  const optNames = [...all.matchAll(/effets? de [«"]\s*([^»"]+?)\s*[»"][^.]*?qu'une fois par tour|activer qu'1 carte [«"]\s*([^»"]+?)\s*[»"]|Invoquer Spécialement [«"]\s*([^»"]+?)\s*[»"] qu'une fois par tour|only use (?:this|each) effect of "([^"]+)"/gi)].map((m) => m[1] || m[2] || m[3] || m[4]);
+  if (name && optNames.some((q) => q.toLowerCase() !== name.toLowerCase()))
     W("La restriction « une fois par tour » cite un nom entre guillemets qui ne correspond pas au nom de cette carte.");
   if (fr && /\bonce per turn\b|\byou can\b/i.test(all)) W("Le texte semble en anglais alors que la carte est en français.");
 
