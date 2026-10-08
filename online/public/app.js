@@ -443,8 +443,7 @@ function viewDuel() {
       <div class="horizontal-phases">${PHASES.map(([b, n], i) => `<span class="${i === phaseIdx ? "active" : i < phaseIdx ? "done" : ""}">${n.toUpperCase()}</span>`).join("")}</div>
       ${d.chain && d.chain.length ? `<div class="chain-preview"><span>CHAÎNE :</span>${d.chain.map((c) => `<div class="chain-card">${thumb(c.code)}</div>`).join("")}</div>` : ""}
     </div>
-    ${d.ended ? viewEnd(d, me, pname) : viewPrompt(p, acts, places, me, pname, d)}
-    ${S.focus ? viewFocus(acts) : ""}
+    ${d.ended ? viewEnd(d, me, pname) : ""}
     <div class="side-card journal-card"><div class="journal-heading"><strong>JOURNAL DU DUEL</strong><span>EN DIRECT</span></div>
       <div class="journal-feed" id="log">${S.log.slice(-150).map((e) => logLine(e, me, pname)).filter(Boolean).join("")}</div>
       ${(v.chat || []).slice(-6).map((c) => `<div class="chat-line"><b style="color:${v.teams[c.seat] === me ? "var(--green)" : "#dd6965"}">${esc(v.players[c.seat] ? v.players[c.seat].name : c.seat)}</b> ${esc(c.t)}</div>`).join("")}
@@ -452,11 +451,18 @@ function viewDuel() {
     </div>
   </aside>`;
 
+  // Les interactions s'ouvrent par-dessus le terrain : barre fixe en bas pour les commandes, pop-up pour le reste
+  const DOCK = new Set([MSG.SELECT_IDLECMD, MSG.SELECT_BATTLECMD, MSG.SELECT_PLACE, MSG.SELECT_DISFIELD]);
+  const promptHTML = d.ended ? "" : viewPrompt(p, acts, places, me, pname, d);
+  const inPopup = p && !DOCK.has(p.type);
+  const dock = d.ended ? "" : `<div class="duel-dock">${inPopup ? `<div class="side-card prompt-card wait"><div class="prompt-head"><div class="waiting-icon">${icon("spark", 20)}</div><div><strong>Une décision t'attend</strong><p>Réponds dans la fenêtre ouverte.</p></div></div></div>` : promptHTML}</div>`;
+  const popup = inPopup ? `<div class="overlay" role="dialog" aria-modal="true"><div class="popup" data-a="noop">${promptHTML}</div></div>`
+    : S.focus ? `<div class="overlay" data-a="unfocus" role="dialog" aria-modal="true"><div class="popup" data-a="noop">${viewFocus(acts)}</div></div>` : "";
   return `<section class="yod-game">
     <header class="game-header"><button class="back-lobby" data-a="leave">${icon("chevron", 16)}ACCUEIL</button>
       <div class="room-identity"><small>SALLE PRIVÉE</small><strong>${esc(v.code)}</strong></div>${v.seat ? "" : `<span class="spectator">SPECTATEUR</span>`}
       <button class="invite-code" data-a="copycode">${icon("copy", 15)}COPIER LE LIEN</button></header>
-    <div class="game-layout">${board}${sidebar}</div></section>`;
+    <div class="game-layout">${board}${sidebar}</div>${dock}${popup}</section>`;
 }
 
 function viewEnd(d, me, pname) {
@@ -675,6 +681,7 @@ const ACT = {
   },
   doact(el) { const a = (actionsMap(S.view.duel.prompt)[S.focus] || [])[+el.dataset.i]; if (a) send(a.resp); },
   unfocus() { S.focus = null; render(); },
+  noop() {},
   raw(el) { send(JSON.parse(el.dataset.r)); },
   pickc(el) {
     const p = S.view.duel.prompt, i = +el.dataset.i;
@@ -702,10 +709,10 @@ const ACT = {
 function showPile(list, c, l, acts) {
   ACT.closepile();
   const box = document.createElement("div");
-  box.id = "pilebox"; box.className = "side-card pilebox";
+  box.id = "pilebox"; box.className = "overlay"; box.dataset.a = "closepile";
   const title = { [LOC.GRAVE]: "Cimetière", [LOC.REMOVED]: "Cartes bannies", [LOC.EXTRA]: "Extra Deck" }[l];
-  box.innerHTML = `<div class="turn-heading"><strong>${title.toUpperCase()} (${list.filter(Boolean).length})</strong><button class="side-ghost" data-a="closepile" aria-label="Fermer">${icon("x", 14)}</button></div>
-    <div class="choices">${list.map((card, s) => (card ? `<div class="choice"><div class="card ${acts[key(c, l, s)] ? "act" : ""}" data-a="pilecard" data-k="${key(c, l, s)}" tabindex="0">${face(card.code)}</div><small>${esc(card.code ? cname(card.code) : "face verso")}</small></div>` : "")).join("")}</div>`;
+  box.innerHTML = `<div class="popup side-card" data-a="noop"><div class="turn-heading"><strong>${title.toUpperCase()} (${list.filter(Boolean).length})</strong><button class="side-ghost" data-a="closepile" aria-label="Fermer">${icon("x", 14)}</button></div>
+    <div class="choices">${list.map((card, s) => (card ? `<div class="choice"><div class="card ${acts[key(c, l, s)] ? "act" : ""}" data-a="pilecard" data-k="${key(c, l, s)}" tabindex="0">${face(card.code)}</div><small>${esc(card.code ? cname(card.code) : "face verso")}</small></div>` : "")).join("")}</div></div>`;
   document.body.appendChild(box);
 }
 ACT.pilecard = (el) => { S.focus = el.dataset.k; ACT.closepile(); render(); };
