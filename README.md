@@ -39,6 +39,15 @@ leurs cartes et appliquent les effets ensemble. La main, le Deck et l'Extra Deck
   [mycard/ygopro-database](https://github.com/mycard/ygopro-database) (fichiers `locales/*/cards.cdb`).
 - Pour mettre à jour les cartes de l'arène après un nouvel archétype : `python3 tools/build_game.py archetypes/<dossier>`.
 
+### Images des cartes officielles
+
+L'Arène affiche l'image de 11 142 cartes officielles sur 14 257 (les plus récentes n'en ont pas encore et gardent leur cadre texte). Les images viennent du dépôt [Wildric-Auric/YuGiOh-Database](https://github.com/Wildric-Auric/YuGiOh-Database) et sont regroupées en 112 planches de 100 vignettes (`game/ygo/img/`, hors git) :
+
+```
+git clone --depth 1 https://github.com/Wildric-Auric/YuGiOh-Database /tmp/ygodb
+python3 tools/build_official_images.py "/tmp/ygodb/Card Images"
+```
+
 ## Extension EDOPro (effets automatiques)
 
 `edopro/hueco-mundo-edopro.zip` contient l'archétype prêt pour [EDOPro](https://projectignis.github.io/download.html) : base de cartes, un script Lua par carte et les illustrations. Le moteur applique lui-même les déclencheurs, les conditions et les coûts. Installation et règles de salle : [edopro/README.md](edopro/README.md).
