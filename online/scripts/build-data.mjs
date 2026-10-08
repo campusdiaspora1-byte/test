@@ -4,7 +4,7 @@
 //  data/strings.json    textes système d'EDOPro en français (avec l'anglais en secours)
 //  data/scripts/        scripts Lua : ProjectIgnis/CardScripts (officiels + utilitaires) + Hueco Mundo
 //  public/t/<n>.json    nom, type et texte des cartes pour l'interface (paquets par code % 100)
-//  public/index-cards.json  liste de recherche du deck (code, nom FR, nom EN, catégorie)
+//  public/index-cards.json  liste de recherche du deck : [code, nom FR, nom EN, catégorie, type, niveau, attribut, type de monstre, ATK, DEF]
 //  public/hm/<code>.jpg illustrations des cartes Hueco Mundo
 //
 // Sources : ProjectIgnis/BabelCDB et ProjectIgnis/Distribution (EDOPro), mycard/ygopro-database (textes français).
@@ -96,10 +96,14 @@ const index = [];
 for (const [id, e] of Object.entries(engine)) {
   const [alias, , type, level, attribute, , atk, def, ls, rs, link] = e, t = text[id];
   chunks[id % CHUNKS][id] = [t.name, t.desc, t.strs, type, level, ATTR[attribute] || "", +e[5], atk, def, ls, rs, link, t.en || ""];
-  if (!(type & T.TOKEN) && !(alias && Math.abs(alias - id) < 20)) index.push([+id, t.name, t.en && t.en !== t.name ? t.en : "", kindOf(type)]);
+  if (!(type & T.TOKEN) && !(alias && Math.abs(alias - id) < 20)) {
+    const race = BigInt(e[5]), raceIdx = race ? (race & -race).toString(2).length - 1 : -1; // n° du bit : Guerrier = 0, Magicien = 1…
+    index.push([+id, t.name, t.en && t.en !== t.name ? t.en : "", kindOf(type), type, level, attribute, raceIdx, atk, def]);
+  }
 }
 chunks.forEach((c, i) => writeFileSync(path.join(PUB, "t", `${i}.json`), JSON.stringify(c)));
-index.sort((a, b) => a[1].localeCompare(b[1], "fr"));
+const sortName = (n) => n.replace(/^[\s"«“'(]+/, "");
+index.sort((a, b) => sortName(a[1]).localeCompare(sortName(b[1]), "fr"));
 writeFileSync(path.join(PUB, "index-cards.json"), JSON.stringify(index));
 
 // ---------- textes système ----------

@@ -34,6 +34,7 @@ const S = {
   name: store.get("name", ""), decks: store.get("decks", []), deckSel: store.get("deck-sel", "demo"),
   code: null, token: null, view: null, version: 0, log: [], logEnd: 0, busy: false, picks: [], focus: null, editing: null, search: "", announce: "",
   tab: "play", selCard: null, rooms: store.get("rooms", []),
+  f: { cat: "all", sub: "", attr: "", race: "", lvl: "", sort: "name" }, limit: 60,
 };
 const TEXT = {}, CHUNK = {};
 let STR = { system: {} }, INDEX = null;
@@ -190,7 +191,7 @@ function deckCounts(d) {
 }
 async function loadIndex() {
   if (INDEX) return INDEX;
-  INDEX = (await (await fetch("/index-cards.json")).json()).map(([code, name, en, k]) => ({ code, name, en, k, key: norm(name + " " + en) }));
+  INDEX = (await (await fetch("/index-cards.json")).json()).map(([code, name, en, k, type, level, attr, race, atk, def]) => ({ code, name, en, k, type, level, attr, race, atk, def, key: norm(name + " " + en) }));
   return INDEX;
 }
 const norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -282,14 +283,53 @@ function ensureEditing() {
   loadIndex().then(render);
   return S.editing;
 }
+// Filtres de la collection
+const SUBS = {
+  m: [["", "Tous les monstres"], ["0x20", "Effet"], ["0x10", "Normal"], ["0x80", "Rituel"], ["0x1000000", "Pendule"], ["0x1000", "Syntoniseur"], ["0x200000", "Flip"]],
+  x: [["", "Tout l'Extra Deck"], ["0x40", "Fusion"], ["0x2000", "Synchro"], ["0x800000", "Xyz"], ["0x4000000", "Lien"]],
+  s: [["", "Toutes les magies"], ["n", "Normale"], ["0x10000", "Jeu-Rapide"], ["0x20000", "Continue"], ["0x40000", "Équipement"], ["0x80000", "Terrain"], ["0x80", "Rituelle"]],
+  t: [["", "Tous les pièges"], ["n", "Normal"], ["0x20000", "Continu"], ["0x100000", "Contre-Piège"]],
+};
+const SORTS = [["name", "Nom (A → Z)"], ["atk-", "ATK (forte → faible)"], ["atk+", "ATK (faible → forte)"], ["def-", "DEF (forte → faible)"], ["lvl-", "Niveau / Rang (haut → bas)"], ["lvl+", "Niveau / Rang (bas → haut)"]];
+const isMonster = (c) => c.k === "m" || c.k === "x";
+function filteredCards() {
+  if (!INDEX) return null;
+  const f = S.f, q = norm(S.search.trim()), sub = f.sub ? (f.sub === "n" ? "n" : parseInt(f.sub, 16)) : 0;
+  const SUB_FLAGS = 0x10000 | 0x20000 | 0x40000 | 0x80000 | 0x80 | 0x100000;
+  let list = INDEX.filter((c) => {
+    if (q.length > 1 && !c.key.includes(q)) return false;
+    if (f.cat === "hm") { if (c.code < HM_FIRST || c.code >= HM_LAST) return false; }
+    else if (f.cat !== "all" && c.k !== f.cat) return false;
+    if (sub === "n" && c.type & SUB_FLAGS) return false;
+    if (sub && sub !== "n" && !(c.type & sub)) return false;
+    if (f.attr && c.attr !== +f.attr) return false;
+    if (f.race !== "" && c.race !== +f.race) return false;
+    if (f.lvl && (!isMonster(c) || c.level !== +f.lvl)) return false;
+    return true;
+  });
+  const [key, dir] = [f.sort.replace(/[+-]$/, ""), f.sort.endsWith("+") ? 1 : -1];
+  if (key !== "name") list = list.filter(isMonster).sort((a, b) => dir * ((key === "atk" ? a.atk - b.atk : key === "def" ? a.def - b.def : a.level - b.level)) || a.name.localeCompare(b.name, "fr"));
+  return list;
+}
+function filterBar() {
+  const f = S.f, sel = (id, opts, val, label) => `<select id="${id}" aria-label="${label}">${opts.map(([v, n]) => `<option value="${v}" ${String(val) === String(v) ? "selected" : ""}>${n}</option>`).join("")}</select>`;
+  const cats = [["all", "Toutes les cartes"], ["m", "Monstres"], ["x", "Extra Deck"], ["s", "Magies"], ["t", "Pièges"], ["hm", "Hueco Mundo"]];
+  const mon = f.cat === "m" || f.cat === "x" || f.cat === "all" || f.cat === "hm";
+  return `<div class="filters">${sel("f-cat", cats, f.cat, "Catégorie")}
+    ${SUBS[f.cat] ? sel("f-sub", SUBS[f.cat], f.sub, "Sous-type") : ""}
+    ${mon ? sel("f-attr", [["", "Tous les attributs"], ...ATTRS.map(([b, n]) => [b, n])], f.attr, "Attribut") : ""}
+    ${mon ? sel("f-race", [["", "Tous les types"], ...RACES.slice(0, 26).map((n, i) => [i, n])], f.race, "Type de monstre") : ""}
+    ${mon ? sel("f-lvl", [["", "Tous les niveaux"], ...Array.from({ length: 13 }, (_, i) => [i + 1, `Niveau / Rang ${i + 1}`])], f.lvl, "Niveau") : ""}
+    ${sel("f-sort", SORTS, f.sort, "Tri")}
+    ${f.cat !== "all" || f.sub || f.attr || f.race !== "" || f.lvl || f.sort !== "name" || S.search ? `<button class="ghost-action" data-a="resetfilters">Effacer les filtres</button>` : ""}</div>`;
+}
 function viewDecks() {
   const d = ensureEditing(), counts = deckCounts(d);
   const problems = [];
   if (d.main.length < 40 || d.main.length > 60) problems.push(`Main Deck : ${d.main.length} cartes (40 à 60)`);
   if (d.extra.length > 15) problems.push(`Extra Deck : ${d.extra.length} cartes (15 max)`);
   const over = Object.entries(counts).filter(([, n]) => n > 3); if (over.length) problems.push(`Plus de 3 exemplaires : ${over.map(([c]) => cname(c)).join(", ")}`);
-  const q = norm(S.search.trim());
-  const results = q.length > 1 && INDEX ? INDEX.filter((c) => c.key.includes(q)).slice(0, 48).map((c) => c.code) : Array.from({ length: 26 }, (_, i) => HM(i + 1));
+  const all = filteredCards(), results = all ? all.slice(0, S.limit).map((c) => c.code) : [];
   const sel = S.selCard || results[0], st = text(sel), stats = deckStats(d);
   const row = (code, part) => { const t = text(code); return `<div class="deck-list-row"><div class="thumb">${thumb(code)}</div><div><strong>${esc(t ? t.name : code)}</strong><small>${esc(t ? typeLine(t).split(" · ").slice(0, 2).join(" · ") : "")}</small></div><span>×${counts[code]}</span><button aria-label="Retirer ${esc(t ? t.name : "")}" data-a="rmcard" data-c="${code}" data-p="${part}">${icon("x", 14)}</button></div>`; };
   const uniq = (a) => [...new Set(a)];
@@ -305,8 +345,10 @@ function viewDecks() {
       </aside>
       <div class="collection-panel">
         <div class="collection-toolbar"><div class="search-field">${icon("search", 18)}<input id="dsearch" value="${esc(S.search)}" placeholder="Rechercher une carte (français ou anglais)…" aria-label="Rechercher une carte"></div>
-          <span class="collection-count">${q.length > 1 ? `${results.length}${results.length === 48 ? "+" : ""} RÉSULTATS` : "HUECO MUNDO"}</span></div>
-        <div class="card-grid">${results.map((c) => `<button class="collection-card ${sel === c ? "selected" : ""}" data-a="addcard" data-c="${c}" aria-label="Ajouter ${esc(cname(c))}">${thumb(c)}${counts[c] ? `<span class="owned">×${counts[c]}</span>` : ""}<span class="add-card">${icon("plus", 14)}</span></button>`).join("") || `<p class="muted">Aucune carte trouvée.</p>`}</div>
+          <span class="collection-count">${all ? `${all.length.toLocaleString("fr-FR")} CARTES` : "CHARGEMENT…"}</span></div>
+        ${filterBar()}
+        <div class="card-grid">${results.map((c) => `<button class="collection-card ${sel === c ? "selected" : ""}" data-a="addcard" data-c="${c}" aria-label="Ajouter ${esc(cname(c))}">${thumb(c)}${counts[c] ? `<span class="owned">×${counts[c]}</span>` : ""}<span class="add-card">${icon("plus", 14)}</span></button>`).join("") || `<p class="muted">${all ? "Aucune carte ne correspond à ces filtres." : "Chargement des 14 000 cartes…"}</p>`}</div>
+        ${all && all.length > S.limit ? `<button class="ghost-action more" data-a="more">Afficher plus (${(all.length - S.limit).toLocaleString("fr-FR")} restantes)</button>` : ""}
         <div class="card-detail"><div class="detail-accent"></div><div><small class="label">Carte sélectionnée</small><strong>${esc(cname(sel))}</strong><span>${esc(typeLine(st))}</span><p>${esc(st ? st.desc : "")}</p></div></div>
       </div>
       <aside class="current-deck">
@@ -784,6 +826,8 @@ const ACT = {
   doact(el) { const a = (actionsMap(S.view.duel.prompt)[S.focus] || [])[+el.dataset.i]; if (a) send(a.resp); },
   unfocus() { S.focus = null; render(); },
   noop() {},
+  more() { S.limit += 60; render(); },
+  resetfilters() { S.f = { cat: "all", sub: "", attr: "", race: "", lvl: "", sort: "name" }; S.search = ""; S.limit = 60; render(); },
   raw(el) { send(JSON.parse(el.dataset.r)); },
   pickc(el) {
     const p = S.view.duel.prompt, i = +el.dataset.i;
@@ -843,13 +887,15 @@ document.addEventListener("submit", async (e) => {
 });
 document.addEventListener("input", (e) => {
   if (e.target.id === "pname") { S.name = e.target.value.trim().slice(0, 24); store.set("name", S.name); const u = document.querySelector(".user-area strong"); if (u) u.textContent = S.name || "Sans pseudo"; const a = document.querySelector(".avatar"); if (a) a.textContent = initials(S.name); }
-  if (e.target.id === "dsearch") { S.search = e.target.value; if (!INDEX) loadIndex().then(render); render(); }
+  if (e.target.id === "dsearch") { S.search = e.target.value; S.limit = 60; if (!INDEX) loadIndex().then(render); render(); }
   if (e.target.id === "announce") { S.announce = e.target.value; render(); }
   if (e.target.id === "dname" && S.editing) S.editing.name = e.target.value;
 });
 document.addEventListener("change", (e) => {
   if (e.target.id === "ydk" && e.target.files[0]) { const r = new FileReader(); r.onload = () => importYdk(r.result); r.readAsText(e.target.files[0]); }
   if (e.target.id === "deckpick") { S.deckSel = e.target.value; store.set("deck-sel", S.deckSel); }
+  const fk = { "f-cat": "cat", "f-sub": "sub", "f-attr": "attr", "f-race": "race", "f-lvl": "lvl", "f-sort": "sort" }[e.target.id];
+  if (fk) { S.f[fk] = e.target.value; if (fk === "cat") S.f.sub = ""; S.limit = 60; render(); }
 });
 
 /* ---------- démarrage ---------- */
