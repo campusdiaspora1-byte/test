@@ -11,15 +11,7 @@ Site de duels Yu-Gi-Oh! entre amis, avec l'archétype Hueco Mundo et toutes les 
 
 ## Mise en ligne sur Vercel
 
-1. Sur [vercel.com](https://vercel.com/new), choisis l'équipe voulue puis **Import Git Repository** → `campusdiaspora1-byte/test`.
-2. Réglages du projet :
-   - **Project Name** : `your-own-duel`
-   - **Root Directory** : `online`
-   - **Framework Preset** : `Other` (le reste est lu dans `vercel.json`)
-3. **Environment Variables** : ajoute `HM_SECRET` avec la valeur du secret enregistré dans Supabase (table `hm_config`, clé `secret`). Coche Production et Preview.
-4. Clique sur **Deploy**.
-5. Dans **Settings → Git**, mets **Production Branch** sur la branche qui contient ce dossier (aujourd'hui `claude/new-session-u2ibpp`), puis redéploie. Chaque push sur cette branche redéploiera le site.
-6. Dans **Settings → Deployment Protection**, désactive **Vercel Authentication**, sinon tes amis devront avoir un compte Vercel pour ouvrir le site.
+
 
 ## En local
 
