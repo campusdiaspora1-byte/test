@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     } else if (req.method === "POST") {
       const b = await readBody(req);
       switch (b.action) {
-        case "create": out = await createRoom(b.name, b.format); break;
+        case "create": out = await createRoom(b.name, b.format, b.bot); break;
         case "format": out = await setFormat(b.code, b.token, b.format); break;
         case "join": out = await joinRoom(b.code, b.name, b.token); break;
         case "deck": out = await setDeck(b.code, b.token, b.deck); break;

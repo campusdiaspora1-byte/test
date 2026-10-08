@@ -8,6 +8,7 @@
 //  public/index-cards.json  liste de recherche du deck : [code, nom FR, nom EN, catégorie, type, niveau, attribut, type de monstre, ATK, DEF]
 //  public/hm/<code>.jpg illustrations des cartes des packs
 //  data/lflists.json, public/lflists.json  formats et listes de cartes interdites / limitées (ProjectIgnis/LFLists)
+//  data/bots.json, public/bots.json  decks du bot (ceux de WindBot Ignite, ProjectIgnis/windbot, + les Decks de démo des packs)
 //  public/packs.json    les packs (nom, auteur, cartes, Deck de démo, date de publication) pour l'accueil et l'éditeur de deck
 //
 // Sources : ProjectIgnis/BabelCDB et ProjectIgnis/Distribution (EDOPro), mycard/ygopro-database (textes français).
@@ -55,6 +56,7 @@ const babel = clone("ProjectIgnis/BabelCDB", "BabelCDB");
 const scripts = clone("ProjectIgnis/CardScripts", "CardScripts");
 const distrib = clone("ProjectIgnis/Distribution", "Distribution");
 const lflists = clone("ProjectIgnis/LFLists", "LFLists");
+const windbot = clone("ProjectIgnis/windbot", "windbot");
 const frCdb = await download("https://raw.githubusercontent.com/mycard/ygopro-database/master/locales/fr-FR/cards.cdb", "fr-FR.cdb");
 // Packs : packs/<nom>/ (Hueco Mundo compris ; régénéré depuis edopro/ par `npm run sync-hm`)
 const packs = existsSync(PACKS) ? readdirSync(PACKS).filter((d) => existsSync(path.join(PACKS, d, "cards.json"))).sort().map((d) => loadPack(path.join(PACKS, d))) : [];
@@ -195,7 +197,30 @@ for (const p of packs) {
     home: !!m.home, published: m.published || addedOn(path.join(p.dir, "pack.json")), cards: ids,
     deck: { main: (deck.main || []).filter((c) => engine[c]), extra: (deck.extra || []).filter((c) => engine[c]) } });
 }
+// ---------- decks du bot ----------
+// bots.json de WindBot : { name, deck, difficulty } ; le deck est Decks/AI_<deck>.ydk (nom parfois écrit autrement)
+const ydk = (src) => { const out = { main: [], extra: [] }; let part = null;
+  for (const l of src.split(/\r?\n/).map((x) => x.trim())) { if (l === "#main") part = out.main; else if (l === "#extra") part = out.extra; else if (l.startsWith("!")) part = null; else if (/^\d+$/.test(l) && part) part.push(+l); }
+  return out; };
+const keyOf = (n) => n.toLowerCase().replace(/[^a-z0-9]/g, "");
+const ydks = Object.fromEntries(readdirSync(path.join(windbot, "Decks")).filter((f) => /^AI_.*\.ydk$/.test(f)).map((f) => [keyOf(f.slice(3, -4)), f]));
+const ALIASES = { rankv: "rank5", levelviii: "level8", zexalweapons: "zexalweapon", lucky: "lucky" };
+const bots = [];
+for (const p of packs) if (p.meta.deck && (p.meta.deck.main || []).length >= 40)
+  bots.push({ id: "pack-" + p.slug, name: p.meta.name || p.slug, source: "pack", difficulty: null, cover: +p.meta.cover || 0, main: p.meta.deck.main.filter((c) => engine[c]), extra: (p.meta.deck.extra || []).filter((c) => engine[c]) });
+for (const b of JSON.parse(readFileSync(path.join(windbot, "bots.json"), "utf8"))) {
+  const f = ydks[keyOf(b.deck)] || ydks[ALIASES[keyOf(b.deck)]];
+  if (!f || !(b.masterRules || [5]).includes(5)) continue;
+  const d = ydk(readFileSync(path.join(windbot, "Decks", f), "utf8"));
+  if (d.main.length < 40 || [...d.main, ...d.extra].some((c) => !engine[c])) continue; // une carte inconnue : deck ignoré
+  const cover = d.main.find((c) => engine[c][2] & T.MONSTER) || d.main[0];
+  bots.push({ id: "wb-" + keyOf(b.deck), name: b.name, source: "windbot", difficulty: b.difficulty ?? null, cover, main: d.main, extra: d.extra.slice(0, 15) });
+}
+writeFileSync(path.join(DATA, "bots.json"), JSON.stringify(bots));
+writeFileSync(path.join(PUB, "bots.json"), JSON.stringify(bots.map(({ main, extra, ...b }) => ({ ...b, size: main.length + extra.length }))));
+version.update(JSON.stringify(bots.map((b) => b.id)));
+
 writeFileSync(path.join(PUB, "packs.json"), JSON.stringify({ v: version.digest("hex").slice(0, 12), packs: list }));
 if (sources.rejected.length) console.warn("cartes refusées (numéro déjà pris) :", sources.rejected.map((r) => `${r.pack}/${r.id} (${r.owner})`).join(", "));
 
-console.log(`${Object.keys(engine).length} cartes (${fr} en français) · ${packs.length} packs · formats ${formats.map((f) => f.name).join(", ")} · ${readdirSync(dst).length} scripts · ${index.length} cartes dans la recherche`);
+console.log(`${Object.keys(engine).length} cartes (${fr} en français) · ${packs.length} packs · ${bots.length} decks pour le bot · formats ${formats.map((f) => f.name).join(", ")} · ${readdirSync(dst).length} scripts · ${index.length} cartes dans la recherche`);

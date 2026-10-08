@@ -50,6 +50,20 @@ const META = fetch("/packs.json", { cache: "no-cache" }).then((r) => r.json()).t
   render();
   return fetch(`/lflists.json?v=${VER}`).then((r) => r.json()).then((l) => { FORMATS = [AMICAL, ...l]; render(); });
 }).catch(() => {});
+// Decks du bot (WindBot Ignite de Project Ignis, et les Decks de démo des packs), chargés à l'ouverture du choix
+let BOTS = null;
+const loadBots = () => (BOTS ? Promise.resolve(BOTS) : META.then(() => fetch(`/bots.json?v=${VER}`)).then((r) => r.json()).then((b) => { BOTS = b; b.forEach((x) => text(x.cover)); render(); return b; }).catch(() => (BOTS = [])));
+function viewBotPick() {
+  const q = norm(S.botSearch || "").trim();
+  const list = (BOTS || []).filter((b) => !q || norm(b.name).includes(q));
+  const lvl = (b) => (b.source === "pack" ? "Pack" : b.difficulty == null ? "WindBot" : `WindBot · ${"★".repeat(Math.max(1, b.difficulty))}`);
+  return `<div class="overlay" data-a="closebot" role="dialog" aria-modal="true" aria-label="Choisir le deck du bot"><div class="popup side-card bot-pick" data-a="noop">
+    <div class="turn-heading"><strong>AFFRONTER LE BOT</strong><button class="side-ghost" data-a="closebot" aria-label="Fermer">${icon("x", 14)}</button></div>
+    <p class="muted small">Le bot joue avec l'IA générique de <a href="https://github.com/ProjectIgnis/windbot" target="_blank" rel="noopener">WindBot Ignite</a> (le bot d'EDOPro). Choisis le deck qu'il utilise : ton deck « ${esc((allDecks().find((x) => x.id === S.deckSel) || DEMO).name)} » doit respecter le format ${esc(fmtOf(S.fmt).short || fmtOf(S.fmt).name)}.</p>
+    <div class="search-field">${icon("search", 16)}<input id="botsearch" value="${esc(S.botSearch || "")}" placeholder="Chercher un deck (Blue-Eyes, Dark Magician…)" aria-label="Chercher un deck de bot"></div>
+    <div class="bot-list">${BOTS ? list.map((b) => `<button class="bot-option" data-a="vsbot" data-id="${esc(b.id)}"><span class="thumb">${thumb(b.cover)}</span><span><strong>${esc(b.name)}</strong><small>${lvl(b)} · ${b.size} cartes</small></span>${icon("chevron", 16)}</button>`).join("") || `<p class="muted small">Aucun deck ne correspond.</p>` : `<p class="muted small">Chargement des decks…</p>`}</div>
+  </div></div>`;
+}
 // Formats : Amical (sans liste) ou une liste officielle d'EDOPro (ProjectIgnis/LFLists)
 let FORMATS = [AMICAL];
 const fmtOf = (id) => FORMATS.find((f) => f.id === id) || AMICAL;
@@ -269,7 +283,7 @@ function render() {
   const focus = document.activeElement && document.activeElement.id, val = focus && document.activeElement.value, selStart = focus && document.activeElement.selectionStart;
   let html;
   if (S.code && S.view && S.view.status !== "lobby") html = viewDuel();
-  else html = `<main class="app-shell"><div class="ambient-grid"></div>${topbar()}${S.code ? (S.view ? viewPrep() : `<div class="prep"><div class="loader-content">${emblem()}<div class="loader-title">CONNEXION…</div><p>Salle ${esc(S.code)}</p></div></div>`) : S.tab === "decks" ? viewDecks() : S.tab === "rooms" ? viewRooms() : viewPlay()}</main>`;
+  else html = `<main class="app-shell"><div class="ambient-grid"></div>${topbar()}${S.code ? (S.view ? viewPrep() : `<div class="prep"><div class="loader-content">${emblem()}<div class="loader-title">CONNEXION…</div><p>Salle ${esc(S.code)}</p></div></div>`) : S.tab === "decks" ? viewDecks() : S.tab === "rooms" ? viewRooms() : viewPlay()}${S.botPick && !S.code ? viewBotPick() : ""}</main>`;
   app.innerHTML = html;
   if (focus) { const f = document.getElementById(focus); if (f) { f.focus(); if (val != null && f.value !== val) f.value = val; try { f.setSelectionRange(selStart, selStart); } catch (e) {} } }
   const lg = $("#log"); if (lg) lg.scrollTop = lg.scrollHeight;
@@ -308,6 +322,7 @@ function viewPlay() {
       <div class="hero-actions">
         <button class="primary-action" data-a="create">${icon("plus")}Créer une salle${icon("chevron", 17)}</button>
         <button class="secondary-action" data-a="tab" data-t="rooms">${icon("users")}Rejoindre une salle</button>
+        <button class="secondary-action" data-a="botpick">${icon("shield")}Affronter le bot</button>
       </div>
       ${spotlight}
       <div class="facts"><i></i><strong>14 872</strong> cartes officielles · ${fp ? `nouveau pack <strong>${esc(fp.name)}</strong>` : "archétype <strong>Hueco Mundo</strong>"}</div>
@@ -325,6 +340,7 @@ function viewPlay() {
       <label class="field">Ton pseudo<input id="pname" maxlength="24" value="${esc(S.name)}" placeholder="ex. Ichigo"></label>
       <label class="field">Format de la salle${fmtSelect("fmt", S.fmt, "Format de la salle")}</label>
       <button class="launch-action" data-a="create"><span>${icon("swords")}</span><div><small>PARTIE PRIVÉE</small><strong>CRÉER UNE SALLE</strong></div>${icon("chevron")}</button>
+      <button class="launch-action bot-launch" data-a="botpick"><span>${icon("shield")}</span><div><small>ENTRAÎNEMENT</small><strong>DUEL CONTRE LE BOT</strong></div>${icon("chevron")}</button>
     </div>
   </section>${footer()}`;
 }
@@ -447,12 +463,12 @@ function viewPrep() {
   const d = allDecks().find((x) => x.id === S.deckSel) || DEMO;
   return `<section class="prep"><div class="loader-content">
     ${emblem()}<div class="loader-title">PRÉPARATION DU DUEL</div>
-    <p>${v.players.B ? "Les deux duellistes sont là : validez vos decks." : "Envoie ce code ou le lien à ton adversaire."}</p>
+    <p>${v.players.B && v.players.B.bot ? `Duel contre le bot <strong>${esc(v.players.B.name)}</strong> : valide ton deck pour commencer.` : v.players.B ? "Les deux duellistes sont là : validez vos decks." : "Envoie ce code ou le lien à ton adversaire."}</p>
     <div class="room-code">${esc(v.code)}</div>
     <div class="players-loading"><span>${pl("A")}</span><strong>VS</strong><span>${pl("B")}</span></div>
     <div class="prep-box">
       <div class="field">Format${me === "A" && v.status === "lobby" ? fmtSelect("roomfmt", v.format ? v.format.id : "amical", "Format de la salle") : `<div class="fmt-tag">${esc(v.format ? (v.format.id === "amical" ? fmtName(AMICAL) : v.format.name) : fmtName(AMICAL))}</div>`}</div>
-      <div class="field">Lien d'invitation<div class="row"><input id="rlink" readonly value="${esc(link)}"><button class="ghost-action" data-a="copylink">${icon("copy", 15)}Copier</button></div></div>
+      ${v.players.B && v.players.B.bot ? "" : `<div class="field">Lien d'invitation<div class="row"><input id="rlink" readonly value="${esc(link)}"><button class="ghost-action" data-a="copylink">${icon("copy", 15)}Copier</button></div></div>`}
       ${me ? (v.players[me].ready ? `<p class="muted small" style="margin:0">Ton deck est validé. Le duel commence dès que ton adversaire a validé le sien.</p>`
         : `<div class="field">Ton deck<div class="row"><select id="deckpick" aria-label="Deck">${allDecks().map((x) => `<option value="${esc(x.id)}" ${x.id === d.id ? "selected" : ""}>${esc(x.name)} (${x.main.length} + ${x.extra.length})</option>`).join("")}</select><button class="primary-action" data-a="ready">Valider</button></div></div>`)
         : !v.players.B ? `<label class="field">Ton pseudo<input id="pname" maxlength="24" value="${esc(S.name)}"></label><button class="primary-action" data-a="joinhere">Prendre la place</button>` : `<p class="muted small" style="margin:0">La salle est complète : tu la regardes en spectateur.</p>`}
@@ -566,7 +582,7 @@ function viewDuel() {
   return `<section class="yod-game">
     <header class="game-header"><button class="back-lobby" data-a="leave">${icon("chevron", 16)}ACCUEIL</button>
       <div class="room-identity"><small>SALLE PRIVÉE</small><strong>${esc(v.code)}</strong></div>${v.seat ? "" : `<span class="spectator">SPECTATEUR</span>`}
-      <button class="invite-code" data-a="copycode">${icon("copy", 15)}COPIER LE LIEN</button></header>
+      ${v.players.B && v.players.B.bot ? "" : `<button class="invite-code" data-a="copycode">${icon("copy", 15)}COPIER LE LIEN</button>`}</header>
     <div class="game-layout">${board}${sidebar}</div>${dock}${popup}</section>`;
 }
 
@@ -843,6 +859,19 @@ const ACT = {
   leave() { leave(); },
   copylink() { copy($("#rlink").value, $("#rlink")); },
   copycode() { copy(location.origin + "/?salle=" + S.code); },
+  botpick() { S.botPick = true; loadBots(); render(); setTimeout(() => { const f = $("#botsearch"); if (f) f.focus(); }, 0); },
+  closebot() { S.botPick = false; render(); },
+  async vsbot(el) {
+    if (!S.name) { S.botPick = false; S.tab = "play"; render(); const f = $("#pname"); if (f) f.focus(); return toast("Choisis d'abord un pseudo."); }
+    const d = allDecks().find((x) => x.id === S.deckSel) || DEMO, pb = checkDeck(d, fmtOf(S.fmt));
+    if (pb && pb.length) return toast(`Ton deck « ${d.name} » : ${pb[0]}`);
+    try {
+      const r = await api({ action: "create", name: S.name, format: S.fmt, bot: el.dataset.id });
+      store.set("room-" + r.code, r.token); S.botPick = false;
+      await api({ action: "deck", code: r.code, token: r.token, deck: { name: d.name, main: d.main, extra: d.extra } });
+      enter(r.code, r.token);
+    } catch (e) { toast(e.message); }
+  },
   trydeck(el) {
     S.deckSel = el.dataset.id; store.set("deck-sel", S.deckSel); S.editing = null;
     const d = allDecks().find((x) => x.id === S.deckSel);
@@ -951,7 +980,7 @@ document.addEventListener("click", (e) => {
   const f = ACT[el.dataset.a]; if (f) { e.preventDefault(); f(el); }
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { if ($("#pilebox")) ACT.closepile(); else if (S.focus) ACT.unfocus(); }
+  if (e.key === "Escape") { if ($("#pilebox")) ACT.closepile(); else if (S.focus) ACT.unfocus(); else if (S.botPick) ACT.closebot(); }
   if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[tabindex]") && e.target.tagName !== "INPUT") { e.preventDefault(); e.target.click(); }
 });
 document.addEventListener("submit", async (e) => {
@@ -961,6 +990,7 @@ document.addEventListener("submit", async (e) => {
 });
 document.addEventListener("input", (e) => {
   if (e.target.id === "pname") { S.name = e.target.value.trim().slice(0, 24); store.set("name", S.name); const u = document.querySelector(".user-area strong"); if (u) u.textContent = S.name || "Sans pseudo"; const a = document.querySelector(".avatar"); if (a) a.textContent = initials(S.name); }
+  if (e.target.id === "botsearch") { S.botSearch = e.target.value; render(); }
   if (e.target.id === "dsearch") { S.search = e.target.value; S.limit = 60; if (!INDEX) loadIndex().then(render); render(); }
   if (e.target.id === "announce") { S.announce = e.target.value; render(); }
   if (e.target.id === "dname" && S.editing) S.editing.name = e.target.value;

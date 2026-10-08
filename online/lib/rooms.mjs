@@ -4,7 +4,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { AMICAL, deckProblems } from "../public/deckrules.js";
-import { cardInfo, replay, viewFor } from "./engine.mjs";
+import { botAnswer } from "./bot.mjs";
+import { pass } from "./autoplay.mjs";
+import { advance, cardInfo, replay, toJSON, viewFor } from "./engine.mjs";
 import { getStore } from "./store.mjs";
 
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // sans 0/O, 1/I/L
@@ -44,6 +46,12 @@ export function formats() {
   return FORMATS;
 }
 const formatOf = (id) => formats().find((f) => f.id === (id || "amical")) || fail(400, "Format inconnu.");
+// Decks du bot (WindBot Ignite + Decks de démo des packs), préparés par scripts/build-data.mjs
+let BOTS = null;
+export function bots() {
+  if (!BOTS) { try { BOTS = JSON.parse(readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "data", "bots.json"), "utf8")); } catch (e) { BOTS = []; } }
+  return BOTS;
+}
 const formatInfo = (f) => ({ id: f.id, name: f.name, short: f.short || f.name });
 
 /** Vérifie un deck selon les règles officielles et la liste du format (Amical : sans liste). */
@@ -52,9 +60,13 @@ export function checkDeck(deck, format = "amical") {
   return { main, extra, problems: deckProblems({ main, extra }, cardInfo, formatOf(format)) };
 }
 
-export async function createRoom(name, format) {
+export async function createRoom(name, format, bot) {
   const store = getStore();
   const data = { created: Date.now(), status: "lobby", format: formatOf(format).id, players: { A: { name: cleanName(name), token: newToken(), deck: null }, B: null }, game: null, chat: [] };
+  if (bot) { // contre le bot : il prend la place B avec son deck (le format ne s'applique qu'au joueur)
+    const b = bots().find((x) => x.id === bot) || fail(400, "Ce deck de bot n'existe pas.");
+    data.players.B = { name: (b.source === "windbot" ? "WindBot · " : "Bot · ") + b.name, bot: b.id, token: newToken(), deck: { main: b.main, extra: b.extra, name: b.name } };
+  }
   for (let i = 0; i < 8; i++) {
     const code = newCode();
     if (await store.create(code, data)) return { code, seat: "A", token: data.players.A.token };
@@ -67,7 +79,7 @@ export async function joinRoom(code, name, token) {
   const room = await load(code);
   const p = room.data.players;
   if (token) { const seat = SEATS.find((s) => p[s] && p[s].token === token); if (seat) return { code, seat, token }; }
-  if (p.B) fail(409, "La salle est complète (2 joueurs).");
+  if (p.B) fail(409, p.B.bot ? "Cette salle est un duel contre le bot." : "La salle est complète (2 joueurs).");
   p.B = { name: cleanName(name), token: newToken(), deck: null };
   await save(code, room);
   return { code, seat: "B", token: p.B.token };
@@ -92,7 +104,7 @@ export async function setFormat(code, token, format) {
   if (seat !== "A") fail(403, "Seul le créateur de la salle choisit le format.");
   if (d.status !== "lobby") fail(409, "Le duel a déjà commencé.");
   d.format = formatOf(format).id;
-  for (const s of SEATS) if (d.players[s] && d.players[s].deck && checkDeck(d.players[s].deck, d.format).problems.length) d.players[s].deck = null;
+  for (const s of SEATS) if (d.players[s] && !d.players[s].bot && d.players[s].deck && checkDeck(d.players[s].deck, d.format).problems.length) d.players[s].deck = null;
   return { version: await save(code, room) };
 }
 
@@ -105,15 +117,28 @@ function startDuel(d) {
   d.status = "duel";
 }
 
-// Comme EDOPro : quand un joueur ne peut rien chaîner, on passe pour lui sans attendre son navigateur
+// Comme EDOPro : quand un joueur ne peut rien chaîner, on passe pour lui sans attendre son navigateur.
+// Contre le bot, on le fait jouer ici jusqu'à ce que ce soit au joueur (sur la partie déjà ouverte, sans tout rejouer).
+// Au-delà de `budget` ms, on s'arrête : la suite sera jouée à la prochaine requête (roomView).
 const nothingToChain = (p) => p && p.type === 16 /* SELECT_CHAIN */ && !p.selects.length && !p.forced;
-async function settle(d, r) {
-  for (let i = 0; i < 50 && nothingToChain(r.pending); i++) {
-    const team = r.pending.player;
-    r.close();
-    d.game.responses.push({ team, r: { type: 8, index: null } });
-    r = await replay(d.game);
+const botTeam = (d) => { const s = SEATS.find((x) => d.players[x] && d.players[x].bot); return s && d.game ? d.game.teams[s] : null; };
+const plain = (x) => JSON.parse(toJSON(x)); // réponses stockées en JSON (pas de BigInt)
+async function settle(d, r, budget = 18000) {
+  const bt = botTeam(d), t0 = Date.now();
+  const memo = (d.game.botMemo ||= {});
+  for (let i = 0; i < 3000 && r.pending && !r.ended && Date.now() - t0 < budget; i++) {
+    const p = r.pending, team = p.player;
+    let resp;
+    if (team === bt) resp = botAnswer(r, team, memo);
+    else if (nothingToChain(p)) resp = { type: 8, index: null };
+    else break;
+    if (!resp || !advance(r, resp)) { // réponse refusée : comme WindBot après un « retry », il passe
+      resp = pass(p);
+      if (!advance(r, resp)) break;
+    }
+    d.game.responses.push({ team, r: plain(resp) });
   }
+  d.game.waiting = r.ended || !r.pending ? null : r.pending.player; // à qui de répondre (évite une relecture pour le savoir)
   if (r.ended) { d.status = "ended"; d.game.winner = r.winner; }
   r.close();
 }
@@ -143,8 +168,8 @@ export async function rematch(code, token) {
   const room = await load(code), d = room.data;
   seatOf(room, token);
   if (d.status !== "ended") fail(409, "Le duel n'est pas terminé.");
-  d.status = "lobby"; d.game = null; // chacun garde son deck : il suffit de le revalider
-  for (const s of SEATS) if (d.players[s]) d.players[s].deck = null;
+  d.status = "lobby"; d.game = null; // chacun garde son deck : il suffit de le revalider (le bot garde le sien)
+  for (const s of SEATS) if (d.players[s] && !d.players[s].bot) d.players[s].deck = null;
   return { version: await save(code, room) };
 }
 
@@ -161,9 +186,15 @@ export async function chat(code, token, text) {
 export async function roomView(code, token, from = 0, knownVersion = 0) {
   code = String(code || "").toUpperCase();
   const room = await load(code), d = room.data;
+  // tour du bot pas fini (requête précédente trop longue) : on le continue
+  if (d.status === "duel" && botTeam(d) != null && d.game.waiting === botTeam(d)) {
+    const r = await replay(d.game);
+    if (r.pending && r.pending.player === botTeam(d) && !r.ended) { await settle(d, r, 12000); try { room.version = await save(code, room); } catch (e) { /* une autre requête a avancé la partie */ } }
+    else r.close();
+  }
   if (knownVersion && knownVersion === room.version) return { code, version: room.version, same: true }; // rien de neuf : pas de relecture
   const seat = SEATS.find((s) => token && d.players[s] && d.players[s].token === token) || null;
-  const players = Object.fromEntries(SEATS.map((s) => [s, d.players[s] ? { name: d.players[s].name, ready: !!d.players[s].deck, deckName: d.players[s].deck && d.players[s].deck.name } : null]));
+  const players = Object.fromEntries(SEATS.map((s) => [s, d.players[s] ? { name: d.players[s].name, bot: !!d.players[s].bot, ready: !!d.players[s].deck, deckName: d.players[s].deck && d.players[s].deck.name } : null]));
   const out = { code, version: room.version, status: d.status, seat, players, chat: d.chat || [], format: formatInfo(formatOf(d.format)) };
   if (d.game) {
     const team = seat ? d.game.teams[seat] : 2; // spectateur : ne voit aucune carte cachée

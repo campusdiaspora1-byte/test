@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "public",
   "functions": {
-    "api/room.js": { "includeFiles": "data/**", "maxDuration": 30, "memory": 1024 }
+    "api/room.js": { "includeFiles": "{data/**,lib/lua/**}", "maxDuration": 30, "memory": 1024 }
   },
   "headers": [
     { "source": "/t/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] },

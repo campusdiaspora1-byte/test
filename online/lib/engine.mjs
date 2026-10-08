@@ -10,6 +10,8 @@ import createCore, { OcgDuelMode, OcgLocation as L, OcgPosition as P, OcgMessage
 const DATA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "data");
 let CARDS = null, lib = null;
 const SCRIPTS = new Map();
+// Couche de compatibilité entre le cœur et les scripts récents (voir lib/lua/compat.lua)
+const COMPAT = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "lua", "compat.lua"), "utf8");
 
 function cards() {
   return (CARDS ||= JSON.parse(readFileSync(path.join(DATA, "cards.json"), "utf8")));
@@ -19,6 +21,7 @@ export function useLocal(rows, scripts) {
   Object.assign(cards(), rows);
   for (const [name, src] of Object.entries(scripts)) SCRIPTS.set(name, src);
 }
+export const allCodes = () => Object.keys(cards()).map(Number);
 export function cardExists(code) { return !!cards()[code]; }
 export function cardInfo(code) {
   const c = cards()[code];
@@ -68,6 +71,7 @@ async function newDuel(game, errors) {
   if (!h) throw new Error("création du duel impossible");
   lib.loadScript(h, "constant.lua", script("constant.lua"));
   lib.loadScript(h, "utility.lua", script("utility.lua"));
+  lib.loadScript(h, "compat.lua", COMPAT);
   const rand = rng(seed);
   for (const team of [0, 1]) {
     const d = game.decks[team];
@@ -117,6 +121,27 @@ export async function replay(game, extra = null) {
   const accepted = !extra || !rejected;
   if (!accepted) { lib.destroyDuel(h); return { accepted: false, errors }; }
   return { h, lib, messages, pending, ended, winner, errors, accepted, close: () => lib.destroyDuel(h) };
+}
+
+/**
+ * Continue une partie ouverte par replay() avec une réponse de plus, sans tout rejouer (tour du bot, passes automatiques).
+ * Renvoie false si le moteur refuse la réponse : la question en cours reste posée.
+ */
+export function advance(r, response) {
+  const { lib: core, h } = r;
+  core.duelSetResponse(h, revive(response));
+  for (let guard = 0; guard < 100000; guard++) {
+    const st = core.duelProcess(h);
+    for (const m of core.duelGetMessage(h)) {
+      if (m.type === M.RETRY) return false;
+      r.messages.push(m);
+      if (PROMPTS.has(m.type)) r.pending = m;
+      if (m.type === M.WIN) { r.ended = true; r.winner = m.player; }
+    }
+    if (st === OcgProcessResult.END || r.ended) { r.ended = true; r.pending = null; return true; }
+    if (st !== OcgProcessResult.CONTINUE) return true;
+  }
+  return true;
 }
 
 /**
