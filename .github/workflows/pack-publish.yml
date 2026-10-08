@@ -1,0 +1,26 @@
+# Quand un pack arrive sur la branche principale (Pull Request fusionnée par le propriétaire), note sa date de publication :
+# le site le met en vedette sur la page d'accueil pendant 14 jours, puis revient à Hueco Mundo.
+name: Publication des packs
+on:
+  push:
+    paths: ["online/packs/**"]
+permissions:
+  contents: write
+jobs:
+  stamp:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Date de publication
+        working-directory: online
+        run: |
+          names=$(node scripts/stamp-packs.mjs)
+          if git diff --quiet; then echo "rien à dater"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -qam "Publication du pack : $names"
+          git push

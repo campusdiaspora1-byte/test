@@ -38,6 +38,15 @@ const S = {
 };
 const TEXT = {}, CHUNK = {};
 let STR = { system: {} }, INDEX = null;
+// Packs de cartes (Hueco Mundo + packs de la communauté) et version des données (pour ne pas garder d'anciens fichiers en cache)
+let PACKS = [], VER = "";
+const CUSTOM = new Set();
+const META = fetch("/packs.json", { cache: "no-cache" }).then((r) => r.json()).then((j) => {
+  VER = j.v || ""; PACKS = j.packs || [];
+  for (const p of PACKS) for (const c of p.cards) CUSTOM.add(c);
+  const f = featured(); if (f) [f.cover, ...f.deck.main.slice(0, 8)].forEach(text);
+  render();
+}).catch(() => {});
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 let toastT; function toast(m) { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 3200); }
@@ -48,7 +57,7 @@ function text(code) {
   if (!code) return null;
   if (TEXT[code]) return TEXT[code];
   const n = code % 100;
-  if (!CHUNK[n]) CHUNK[n] = fetch(`/t/${n}.json`).then((r) => r.json()).then((ch) => {
+  if (!CHUNK[n]) CHUNK[n] = META.then(() => fetch(`/t/${n}.json?v=${VER}`)).then((r) => r.json()).then((ch) => {
     for (const k in ch) { const [name, desc, strs, type, level, attr, race, atk, def, ls, rs, link, en] = ch[k]; TEXT[k] = { name, desc, strs, type, level, attr, race, atk, def, ls, rs, link, en }; }
     render();
   }).catch(() => {});
@@ -79,7 +88,7 @@ const kindOf = (t) => (!t ? "m" : t.type & T.SPELL ? "s" : t.type & T.TRAP ? "t"
 /* ---------- images ---------- */
 // Cartes officielles : serveur d'images d'EDOPro, puis YGOPRODeck ; sinon cadre texte
 function imgUrl(code) {
-  if (code >= HM_FIRST && code < HM_LAST) return [`/hm/${code}.jpg`];
+  if (CUSTOM.has(+code) || (code >= HM_FIRST && code < HM_LAST)) return [`/hm/${code}.jpg${VER ? "?v=" + VER : ""}`];
   return [`https://pics.projectignis.org:2096/pics/${code}.jpg`, `https://images.ygoprodeck.com/images/cards_small/${code}.jpg`];
 }
 window.__imgFail = (img) => {
@@ -183,7 +192,19 @@ function autoAnswer() {
 }
 
 /* ---------- decks ---------- */
-const allDecks = () => [DEMO, ...S.decks];
+// Pack en vedette : le plus récent publié il y a moins de 14 jours ; sinon l'accueil reste sur Hueco Mundo
+const FEATURE_DAYS = 14;
+function featured() {
+  const now = Date.now(), t = (p) => Date.parse(p.published);
+  return PACKS.filter((p) => !p.home && p.published && now >= t(p) && now - t(p) < FEATURE_DAYS * 864e5).sort((a, b) => t(b) - t(a))[0] || null;
+}
+const featureEnd = (p) => new Date(Date.parse(p.published) + FEATURE_DAYS * 864e5).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+const packDeck = (p) => (p.deck && p.deck.main.length >= 40 ? { id: "pack:" + p.slug, name: p.name + " · démo", main: p.deck.main, extra: p.deck.extra } : null);
+const isDemo = (d) => d.id === "demo" || String(d.id).startsWith("pack:");
+function allDecks() {
+  const f = featured(), community = PACKS.filter((p) => !p.home).sort((a, b) => (b === f) - (a === f));
+  return [DEMO, ...community.map(packDeck).filter(Boolean), ...S.decks];
+}
 const saveDecks = () => store.set("decks", S.decks);
 function parseYdk(txt) {
   const main = [], extra = []; let part = null;
@@ -200,7 +221,8 @@ function deckCounts(d) {
 }
 async function loadIndex() {
   if (INDEX) return INDEX;
-  INDEX = (await (await fetch("/index-cards.json")).json()).map(([code, name, en, k, type, level, attr, race, atk, def]) => ({ code, name, en, k, type, level, attr, race, atk, def, key: norm(name + " " + en) }));
+  await META;
+  INDEX = (await (await fetch(`/index-cards.json?v=${VER}`)).json()).map(([code, name, en, k, type, level, attr, race, atk, def]) => ({ code, name, en, k, type, level, attr, race, atk, def, key: norm(name + " " + en) }));
   return INDEX;
 }
 const norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -254,6 +276,14 @@ function deckStats(d) {
 function viewPlay() {
   const d = allDecks().find((x) => x.id === S.deckSel) || DEMO, st = deckStats(d);
   const preview = [...new Set(d.main)].slice(0, 4);
+  const fp = featured(), duo = fp ? [fp.cover, fp.cards.find((c) => c !== fp.cover && fp.deck.main.includes(c)) || fp.cards.find((c) => c !== fp.cover) || fp.cover] : [HM(1), HM(9)];
+  const spotlight = fp ? `<div class="spotlight">
+        <div class="spotlight-tag">${icon("spark", 13)} PACK À L'HONNEUR</div>
+        <strong>${esc(fp.name)}</strong>
+        <small>${fp.author ? `par ${esc(fp.author)} · ` : ""}${fp.cards.length} cartes · en vedette jusqu'au ${featureEnd(fp)}</small>
+        ${fp.description ? `<p>${esc(fp.description)}</p>` : ""}
+        ${packDeck(fp) ? `<button class="secondary-action" data-a="trydeck" data-id="pack:${esc(fp.slug)}">${icon("cards", 17)}Jouer avec ce deck</button>` : ""}
+      </div>` : "";
   return `<section class="page play-page">
     <div class="hero-copy">
       <div class="eyebrow"><span></span> ARÈNE 1 CONTRE 1</div>
@@ -263,13 +293,14 @@ function viewPlay() {
         <button class="primary-action" data-a="create">${icon("plus")}Créer une salle${icon("chevron", 17)}</button>
         <button class="secondary-action" data-a="tab" data-t="rooms">${icon("users")}Rejoindre une salle</button>
       </div>
-      <div class="facts"><i></i><strong>14 872</strong> cartes officielles · archétype <strong>Hueco Mundo</strong></div>
+      ${spotlight}
+      <div class="facts"><i></i><strong>14 872</strong> cartes officielles · ${fp ? `nouveau pack <strong>${esc(fp.name)}</strong>` : "archétype <strong>Hueco Mundo</strong>"}</div>
     </div>
     <div class="duel-stage" aria-hidden="true">
       <div class="stage-ring"></div><div class="stage-ring ring-two"></div>
-      <div class="versus-card left-card">${thumb(HM(1))}</div>
+      <div class="versus-card left-card">${thumb(duo[0])}</div>
       <div class="versus-mark"><small>PRÊT POUR</small><strong>VS</strong><span>LE DUEL</span></div>
-      <div class="versus-card right-card">${thumb(HM(9))}</div>
+      <div class="versus-card right-card">${thumb(duo[1])}</div>
     </div>
     <div class="quick-panel">
       <div class="panel-heading"><div><small>Deck actif</small><strong>${esc(d.name)}</strong></div><button class="icon-button" aria-label="Modifier le deck" data-a="tab" data-t="decks">${icon("edit", 17)}</button></div>
@@ -280,14 +311,14 @@ function viewPlay() {
     </div>
   </section>${footer()}`;
 }
-const footer = () => `<p class="foot">Moteur de règles : <a href="https://github.com/edo9300/ygopro-core" target="_blank" rel="noopener">ocgcore (EDOPro)</a> · scripts des cartes : <a href="https://github.com/ProjectIgnis/CardScripts" target="_blank" rel="noopener">Project Ignis</a> · <a href="https://github.com/martinshiroe/test/tree/claude/new-session-u2ibpp/online" target="_blank" rel="noopener">code source du site</a> (AGPL-3.0). Yu-Gi-Oh! © Kazuki Takahashi, Konami. Site amateur, sans but commercial.</p>`;
+const footer = () => `<p class="foot">Moteur de règles : <a href="https://github.com/edo9300/ygopro-core" target="_blank" rel="noopener">ocgcore (EDOPro)</a> · scripts des cartes : <a href="https://github.com/ProjectIgnis/CardScripts" target="_blank" rel="noopener">Project Ignis</a> · <a href="https://github.com/martinshiroe/test/tree/claude/new-session-u2ibpp/online" target="_blank" rel="noopener">code source du site</a> (AGPL-3.0) · <a href="https://github.com/martinshiroe/test/tree/claude/new-session-u2ibpp/online/packs#readme" target="_blank" rel="noopener">proposer ses cartes</a>. Yu-Gi-Oh! © Kazuki Takahashi, Konami. Site amateur, sans but commercial.</p>`;
 
 /* ---------- decks ---------- */
 function ensureEditing() {
   if (S.editing) return S.editing;
   const d = allDecks().find((x) => x.id === S.deckSel) || DEMO;
   S.editing = JSON.parse(JSON.stringify(d));
-  if (d.id === "demo") { S.editing.id = "new"; S.editing.name = d.name; S.editing.fromDemo = true; }
+  if (isDemo(d)) { S.editing.id = "new"; S.editing.name = d.name; S.editing.fromDemo = true; }
   [...S.editing.main, ...S.editing.extra].forEach(text);
   loadIndex().then(render);
   return S.editing;
@@ -305,10 +336,12 @@ function filteredCards() {
   if (!INDEX) return null;
   const f = S.f, q = norm(S.search.trim()), sub = f.sub ? (f.sub === "n" ? "n" : parseInt(f.sub, 16)) : 0;
   const SUB_FLAGS = 0x10000 | 0x20000 | 0x40000 | 0x80000 | 0x80 | 0x100000;
+  const pk = f.cat.startsWith("pack:") && PACKS.find((p) => "pack:" + p.slug === f.cat), pack = f.cat.startsWith("pack:") ? new Set(pk ? pk.cards : []) : null;
   let list = INDEX.filter((c) => {
     if (q.length > 1 && !c.key.includes(q)) return false;
     if (f.cat === "hm") { if (c.code < HM_FIRST || c.code >= HM_LAST) return false; }
-    else if (f.cat !== "all" && c.k !== f.cat) return false;
+    else if (pack) { if (!pack.has(c.code)) return false; }
+    else if (!pack && f.cat !== "all" && c.k !== f.cat) return false;
     if (sub === "n" && c.type & SUB_FLAGS) return false;
     if (sub && sub !== "n" && !(c.type & sub)) return false;
     if (f.attr && c.attr !== +f.attr) return false;
@@ -322,8 +355,8 @@ function filteredCards() {
 }
 function filterBar() {
   const f = S.f, sel = (id, opts, val, label) => `<select id="${id}" aria-label="${label}">${opts.map(([v, n]) => `<option value="${v}" ${String(val) === String(v) ? "selected" : ""}>${n}</option>`).join("")}</select>`;
-  const cats = [["all", "Toutes les cartes"], ["m", "Monstres"], ["x", "Extra Deck"], ["s", "Magies"], ["t", "Pièges"], ["hm", "Hueco Mundo"]];
-  const mon = f.cat === "m" || f.cat === "x" || f.cat === "all" || f.cat === "hm";
+  const cats = [["all", "Toutes les cartes"], ["m", "Monstres"], ["x", "Extra Deck"], ["s", "Magies"], ["t", "Pièges"], ["hm", "Hueco Mundo"], ...PACKS.filter((p) => !p.home).map((p) => ["pack:" + p.slug, "Pack · " + p.name])];
+  const mon = f.cat === "m" || f.cat === "x" || f.cat === "all" || f.cat === "hm" || f.cat.startsWith("pack:");
   return `<div class="filters">${sel("f-cat", cats, f.cat, "Catégorie")}
     ${SUBS[f.cat] ? sel("f-sub", SUBS[f.cat], f.sub, "Sous-type") : ""}
     ${mon ? sel("f-attr", [["", "Tous les attributs"], ...ATTRS.map(([b, n]) => [b, n])], f.attr, "Attribut") : ""}
@@ -343,11 +376,11 @@ function viewDecks() {
   const row = (code, part) => { const t = text(code); return `<div class="deck-list-row"><div class="thumb">${thumb(code)}</div><div><strong>${esc(t ? t.name : code)}</strong><small>${esc(t ? typeLine(t).split(" · ").slice(0, 2).join(" · ") : "")}</small></div><span>×${counts[code]}</span><button aria-label="Retirer ${esc(t ? t.name : "")}" data-a="rmcard" data-c="${code}" data-p="${part}">${icon("x", 14)}</button></div>`; };
   const uniq = (a) => [...new Set(a)];
   return `<section class="page">
-    <header class="section-heading"><div><div class="eyebrow"><span></span> ATELIER DU DUELLISTE</div><div class="section-title">ÉDITEUR DE DECK</div><p>Construis ta stratégie : toutes les cartes officielles et l'archétype Hueco Mundo.</p></div></header>
+    <header class="section-heading"><div><div class="eyebrow"><span></span> ATELIER DU DUELLISTE</div><div class="section-title">ÉDITEUR DE DECK</div><p>Construis ta stratégie : toutes les cartes officielles, l'archétype Hueco Mundo et les packs de la communauté.</p></div></header>
     <div class="deck-workspace">
       <aside class="deck-sidebar">
         <div class="sidebar-label">MES DECKS <span>${allDecks().length}</span></div>
-        ${allDecks().map((x) => `<button class="deck-option ${x.id === S.deckSel ? "selected" : ""}" data-a="pickdeck" data-id="${esc(x.id)}"><span class="deck-option-icon">${icon("cards")}</span><span><strong>${esc(x.name)}</strong><small>${x.main.length} + ${x.extra.length} cartes${x.id === "demo" ? " · démo" : ""}</small></span></button>`).join("")}
+        ${allDecks().map((x) => `<button class="deck-option ${x.id === S.deckSel ? "selected" : ""}" data-a="pickdeck" data-id="${esc(x.id)}"><span class="deck-option-icon">${icon("cards")}</span><span><strong>${esc(x.name)}</strong><small>${x.main.length} + ${x.extra.length} cartes${isDemo(x) ? " · démo" : ""}</small></span></button>`).join("")}
         <button class="new-deck" data-a="newdeck">${icon("plus", 17)}NOUVEAU DECK</button>
         <details class="import-box"><summary>Importer un .ydk</summary><input type="file" id="ydk" accept=".ydk,text/plain" aria-label="Fichier .ydk"><textarea id="ydktxt" placeholder="ou colle le contenu du .ydk ici"></textarea><button class="ghost-action" data-a="pasteydk">Importer le texte</button></details>
         <div class="deck-rules">${icon("shield", 18)}<div><strong>FORMAT AMICAL</strong><span>40 à 60 cartes · Extra Deck 15 max · 3 exemplaires max · sans liste de bannissement</span></div></div>
@@ -792,6 +825,12 @@ const ACT = {
   leave() { leave(); },
   copylink() { copy($("#rlink").value, $("#rlink")); },
   copycode() { copy(location.origin + "/?salle=" + S.code); },
+  trydeck(el) {
+    S.deckSel = el.dataset.id; store.set("deck-sel", S.deckSel); S.editing = null;
+    const d = allDecks().find((x) => x.id === S.deckSel);
+    toast(d ? `Deck « ${d.name} » choisi : crée une salle pour jouer` : "Deck introuvable");
+    render();
+  },
   pickdeck(el) { S.deckSel = el.dataset.id; store.set("deck-sel", S.deckSel); S.editing = null; S.selCard = null; render(); },
   async ready() {
     const pick = $("#deckpick"); if (pick) { S.deckSel = pick.value; store.set("deck-sel", S.deckSel); }

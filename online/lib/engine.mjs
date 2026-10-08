@@ -14,6 +14,11 @@ const SCRIPTS = new Map();
 function cards() {
   return (CARDS ||= JSON.parse(readFileSync(path.join(DATA, "cards.json"), "utf8")));
 }
+// Pour le validateur : les cartes et scripts d'un pack, lus directement dans son dossier (sans relancer la préparation des données)
+export function useLocal(rows, scripts) {
+  Object.assign(cards(), rows);
+  for (const [name, src] of Object.entries(scripts)) SCRIPTS.set(name, src);
+}
 export function cardExists(code) { return !!cards()[code]; }
 export function cardInfo(code) {
   const c = cards()[code];
@@ -48,15 +53,8 @@ const revive = (r) => (r && Array.isArray(r.races) ? { ...r, races: r.races.map(
 // JSON des messages du moteur (descriptions d'effet et indices en BigInt)
 export const toJSON = (x) => JSON.stringify(x, (k, v) => (typeof v === "bigint" ? Number(v) : v));
 
-/**
- * Rejoue une partie.
- * game : { seed: [4 chaînes], decks: [{main, extra}, {main, extra}] (indice = équipe, l'équipe 0 commence), responses: [{team, r}] }
- * extra : une réponse supplémentaire à essayer (refusée si le moteur la rejette).
- * Renvoie { messages, pending, ended, winner, errors, accepted } et le duel encore ouvert dans `close()`.
- */
-export async function replay(game, extra = null) {
+async function newDuel(game, errors) {
   lib ||= await createCore({ sync: true });
-  const errors = [];
   const seed = game.seed.map((s) => BigInt(s));
   const h = lib.createDuel({
     flags: OcgDuelMode.MODE_MR5,
@@ -76,6 +74,18 @@ export async function replay(game, extra = null) {
     for (const code of shuffled(d.main, rand)) lib.duelNewCard(h, { team, duelist: 0, code, controller: team, location: L.DECK, sequence: 0, position: P.FACEDOWN_DEFENSE });
     for (const code of d.extra) lib.duelNewCard(h, { team, duelist: 0, code, controller: team, location: L.EXTRA, sequence: 0, position: P.FACEDOWN_DEFENSE });
   }
+  return h;
+}
+
+/**
+ * Rejoue une partie.
+ * game : { seed: [4 chaînes], decks: [{main, extra}, {main, extra}] (indice = équipe, l'équipe 0 commence), responses: [{team, r}] }
+ * extra : une réponse supplémentaire à essayer (refusée si le moteur la rejette).
+ * Renvoie { messages, pending, ended, winner, errors, accepted } et le duel encore ouvert dans `close()`.
+ */
+export async function replay(game, extra = null) {
+  const errors = [];
+  const h = await newDuel(game, errors);
   lib.startDuel(h);
 
   const messages = [];
@@ -107,6 +117,49 @@ export async function replay(game, extra = null) {
   const accepted = !extra || !rejected;
   if (!accepted) { lib.destroyDuel(h); return { accepted: false, errors }; }
   return { h, lib, messages, pending, ended, winner, errors, accepted, close: () => lib.destroyDuel(h) };
+}
+
+/**
+ * Pour le validateur de packs : charge une carte seule (son script et son initial_effect) et renvoie les erreurs Lua.
+ */
+export async function loadErrors(code) {
+  const errors = [];
+  const h = await newDuel({ seed: ["1", "2", "3", "4"], decks: [{ main: [code], extra: [] }, { main: [], extra: [] }] }, errors);
+  lib.destroyDuel(h);
+  return errors;
+}
+
+/**
+ * Pour le validateur de packs : joue une partie d'un trait (sans relecture), en demandant chaque réponse à answer(message, étape).
+ * Une réponse refusée par le moteur est remplacée par la réponse de secours fallback(message) si elle existe.
+ * Renvoie { steps, ended, winner, errors (avec l'étape), messages, refused }.
+ */
+export async function autoDuel(game, answer, { steps = 300, fallback = null } = {}) {
+  const errors = [], log = [], messages = [];
+  const h = await newDuel(game, errors);
+  lib.startDuel(h);
+  let pending = null, ended = false, winner = null, n = 0, refused = 0, retried = false;
+  const note = () => { while (log.length < errors.length) log.push({ step: n, text: errors[log.length] }); };
+  for (let guard = 0; guard < 200000 && n < steps; guard++) {
+    let st, retry = false;
+    try { st = lib.duelProcess(h); } catch (e) { errors.push("le moteur s'est arrêté : " + e.message); note(); break; }
+    for (const m of lib.duelGetMessage(h)) {
+      if (m.type === M.RETRY) { retry = true; continue; }
+      messages.push(m);
+      if (PROMPTS.has(m.type)) pending = m;
+      if (m.type === M.WIN) { ended = true; winner = m.player; }
+    }
+    note();
+    if (st === OcgProcessResult.END || ended) { ended = true; break; }
+    if (st === OcgProcessResult.CONTINUE) continue;
+    if (!pending) break;
+    let r;
+    if (retry) { refused++; r = !retried && fallback ? fallback(pending) : null; retried = true; if (!r) break; }
+    else { retried = false; r = answer(pending, n++); }
+    lib.duelSetResponse(h, revive(r));
+  }
+  lib.destroyDuel(h);
+  return { steps: n, ended, winner, errors: log, messages, refused };
 }
 
 /* ---------- ce que voit un joueur ---------- */

@@ -2,17 +2,21 @@
 //
 //  data/cards.json      données moteur de chaque carte (lues par ocgcore)
 //  data/strings.json    textes système d'EDOPro en français (avec l'anglais en secours)
-//  data/scripts/        scripts Lua : ProjectIgnis/CardScripts (officiels + utilitaires) + Hueco Mundo
+//  data/scripts/        scripts Lua : ProjectIgnis/CardScripts (officiels + utilitaires) + packs
+//  data/sources.json    origine de chaque carte des packs, et cartes refusées (numéro déjà pris), pour le validateur
 //  public/t/<n>.json    nom, type et texte des cartes pour l'interface (paquets par code % 100)
 //  public/index-cards.json  liste de recherche du deck : [code, nom FR, nom EN, catégorie, type, niveau, attribut, type de monstre, ATK, DEF]
-//  public/hm/<code>.jpg illustrations des cartes Hueco Mundo
+//  public/hm/<code>.jpg illustrations des cartes des packs
+//  public/packs.json    les packs (nom, auteur, cartes, Deck de démo, date de publication) pour l'accueil et l'éditeur de deck
 //
 // Sources : ProjectIgnis/BabelCDB et ProjectIgnis/Distribution (EDOPro), mycard/ygopro-database (textes français).
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import initSqlJs from "sql.js";
+import { PACKS, loadPack } from "../lib/packs.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CACHE = path.join(ROOT, ".cache"), DATA = path.join(ROOT, "data"), PUB = path.join(ROOT, "public");
@@ -50,15 +54,14 @@ const babel = clone("ProjectIgnis/BabelCDB", "BabelCDB");
 const scripts = clone("ProjectIgnis/CardScripts", "CardScripts");
 const distrib = clone("ProjectIgnis/Distribution", "Distribution");
 const frCdb = await download("https://raw.githubusercontent.com/mycard/ygopro-database/master/locales/fr-FR/cards.cdb", "fr-FR.cdb");
-// Hueco Mundo : copie de edopro/dist/expansions (régénérer avec `npm run sync-hm` après avoir modifié les cartes)
-const HM = path.join(ROOT, "vendor", "hueco-mundo");
-const ourCdb = path.join(HM, "hueco-mundo.cdb");
+// Packs : packs/<nom>/ (Hueco Mundo compris ; régénéré depuis edopro/ par `npm run sync-hm`)
+const packs = existsSync(PACKS) ? readdirSync(PACKS).filter((d) => existsSync(path.join(PACKS, d, "cards.json"))).sort().map((d) => loadPack(path.join(PACKS, d))) : [];
 
 // ---------- cartes ----------
 const T = { MONSTER: 0x1, SPELL: 0x2, TRAP: 0x4, NORMAL: 0x10, EFFECT: 0x20, FUSION: 0x40, RITUAL: 0x80, TUNER: 0x1000, SYNCHRO: 0x2000, TOKEN: 0x4000,
   QUICK: 0x10000, CONT: 0x20000, EQUIP: 0x40000, FIELD: 0x80000, COUNTER: 0x100000, XYZ: 0x800000, PEND: 0x1000000, LINK: 0x4000000 };
 const EXTRA = T.FUSION | T.SYNCHRO | T.XYZ | T.LINK;
-const cdbs = [path.join(babel, "cards.cdb"), ...readdirSync(babel).filter((f) => /^release-.*\.cdb$/.test(f)).map((f) => path.join(babel, f)), ourCdb];
+const cdbs = [path.join(babel, "cards.cdb"), ...readdirSync(babel).filter((f) => /^release-.*\.cdb$/.test(f)).map((f) => path.join(babel, f))];
 
 const engine = {}, text = {};
 const SELECT = "select d.id, d.alias, d.setcode, d.type, d.atk, d.def, d.level, d.race, d.attribute, d.ot, t.name, t.desc, " +
@@ -72,11 +75,21 @@ for (const file of cdbs) {
     text[id] = { name, desc: desc || "", strs: strs.map((s) => s || "") };
   }
 }
+// cartes des packs : un numéro déjà pris (carte officielle ou autre pack) est refusé
+const sources = { cards: {}, rejected: [] };
+for (const p of packs) {
+  for (const { card, row, text: t } of p.cards) {
+    const id = card.id;
+    if (!Number.isInteger(id) || id <= 0) continue;
+    if (engine[id]) { sources.rejected.push({ pack: p.slug, id, owner: sources.cards[id] || "official" }); continue; }
+    engine[id] = row; text[id] = t; sources.cards[id] = p.slug;
+  }
+}
 // textes français (mycard) quand ils existent
 let fr = 0;
 for (const [id, name, desc, ...strs] of rows(frCdb, "select id, name, desc, " + Array.from({ length: 16 }, (_, i) => `str${i + 1}`).join(", ") + " from texts")) {
   const t = text[id];
-  if (!t || !name) continue;
+  if (!t || !name || sources.cards[id]) continue;
   t.en = t.name; t.name = name; t.desc = desc || t.desc;
   t.strs = t.strs.map((s, i) => strs[i] || s);
   fr++;
@@ -85,6 +98,7 @@ for (const [id, name, desc, ...strs] of rows(frCdb, "select id, name, desc, " + 
 rmSync(DATA, { recursive: true, force: true });
 mkdirSync(DATA, { recursive: true });
 writeFileSync(path.join(DATA, "cards.json"), JSON.stringify(engine));
+writeFileSync(path.join(DATA, "sources.json"), JSON.stringify(sources));
 
 // ---------- interface : textes et recherche ----------
 const ATTR = { 1: "TERRE", 2: "EAU", 4: "FEU", 8: "VENT", 16: "LUMIÈRE", 32: "TÉNÈBRES", 64: "DIVIN" };
@@ -101,10 +115,13 @@ for (const [id, e] of Object.entries(engine)) {
     index.push([+id, t.name, t.en && t.en !== t.name ? t.en : "", kindOf(type), type, level, attribute, raceIdx, atk, def]);
   }
 }
-chunks.forEach((c, i) => writeFileSync(path.join(PUB, "t", `${i}.json`), JSON.stringify(c)));
+// version des données : les fichiers de cartes sont gardés en cache par les navigateurs, la version change leur adresse (?v=…)
+const version = createHash("sha1");
+chunks.forEach((c, i) => { const j = JSON.stringify(c); version.update(j); writeFileSync(path.join(PUB, "t", `${i}.json`), j); });
 const sortName = (n) => n.replace(/^[\s"«“'(]+/, "");
 index.sort((a, b) => sortName(a[1]).localeCompare(sortName(b[1]), "fr"));
 writeFileSync(path.join(PUB, "index-cards.json"), JSON.stringify(index));
+version.update(JSON.stringify(index));
 
 // ---------- textes système ----------
 const parseStrings = (file) => {
@@ -118,7 +135,8 @@ const parseStrings = (file) => {
 };
 const en = parseStrings(path.join(distrib, "config", "strings.conf"));
 const frs = parseStrings(path.join(distrib, "config", "languages", "Français", "strings.conf"));
-const ours = parseStrings(path.join(HM, "strings.conf"));
+const ours = { setname: {}, counter: {} };
+for (const p of packs) for (const k of ["setname", "counter"]) for (const [code, n] of Object.entries(p.meta[k === "setname" ? "setnames" : "counters"] || {})) ours[k][parseInt(code, 16)] = n;
 const strings = {};
 for (const k of Object.keys(en)) strings[k] = { ...en[k], ...frs[k], ...ours[k] };
 writeFileSync(path.join(DATA, "strings.json"), JSON.stringify(strings));
@@ -131,12 +149,31 @@ for (const f of readdirSync(scripts)) if (f.endsWith(".lua")) cpSync(path.join(s
 for (const f of readdirSync(path.join(scripts, "official"))) if (f.endsWith(".lua")) cpSync(path.join(scripts, "official", f), path.join(dst, f));
 // utilitaires du dossier unofficial (proc_unofficial.lua…), sans les cartes non officielles
 for (const f of readdirSync(path.join(scripts, "unofficial"))) if (f.endsWith(".lua") && !/^c\d+\.lua$/.test(f)) cpSync(path.join(scripts, "unofficial", f), path.join(dst, f));
-for (const f of readdirSync(path.join(HM, "script"))) cpSync(path.join(HM, "script", f), path.join(dst, f));
+// scripts des packs : seulement ceux de leurs propres cartes (un pack ne peut pas remplacer une carte officielle)
+const own = (p, f) => { const m = /^c(\d+)\.lua$/.exec(f); return m && sources.cards[m[1]] === p.slug; };
+for (const p of packs) {
+  const dir = path.join(p.dir, "script");
+  if (existsSync(dir)) for (const f of readdirSync(dir)) if (own(p, f)) cpSync(path.join(dir, f), path.join(dst, f));
+}
 
-// ---------- illustrations Hueco Mundo ----------
+// ---------- illustrations et liste des packs ----------
 rmSync(path.join(PUB, "hm"), { recursive: true, force: true });
 mkdirSync(path.join(PUB, "hm"), { recursive: true });
-const pics = path.join(HM, "pics");
-for (const f of readdirSync(pics)) cpSync(path.join(pics, f), path.join(PUB, "hm", f));
+const shallow = (() => { try { return execFileSync("git", ["rev-parse", "--is-shallow-repository"], { cwd: ROOT, encoding: "utf8" }).trim() !== "false"; } catch (e) { return true; } })();
+const addedOn = (file) => { // date d'arrivée du pack dans le dépôt, si l'historique complet est disponible
+  if (shallow) return null;
+  try { return execFileSync("git", ["log", "--diff-filter=A", "--format=%cI", "--", file], { cwd: ROOT, encoding: "utf8" }).trim().split("\n").pop() || null; } catch (e) { return null; }
+};
+const list = [];
+for (const p of packs) {
+  const pics = path.join(p.dir, "pics"), ids = p.cards.map((c) => c.card.id).filter((id) => sources.cards[id] === p.slug);
+  if (existsSync(pics)) for (const f of readdirSync(pics)) if (/^\d+\.jpg$/.test(f) && sources.cards[f.slice(0, -4)] === p.slug) { cpSync(path.join(pics, f), path.join(PUB, "hm", f)); version.update(readFileSync(path.join(pics, f))); }
+  const m = p.meta, deck = m.deck || {};
+  list.push({ slug: p.slug, name: String(m.name || p.slug), author: String(m.author || ""), description: String(m.description || ""), cover: +m.cover || ids[0] || 0,
+    home: !!m.home, published: m.published || addedOn(path.join(p.dir, "pack.json")), cards: ids,
+    deck: { main: (deck.main || []).filter((c) => engine[c]), extra: (deck.extra || []).filter((c) => engine[c]) } });
+}
+writeFileSync(path.join(PUB, "packs.json"), JSON.stringify({ v: version.digest("hex").slice(0, 12), packs: list }));
+if (sources.rejected.length) console.warn("cartes refusées (numéro déjà pris) :", sources.rejected.map((r) => `${r.pack}/${r.id} (${r.owner})`).join(", "));
 
-console.log(`${Object.keys(engine).length} cartes (${fr} en français) · ${readdirSync(dst).length} scripts · ${index.length} cartes dans la recherche`);
+console.log(`${Object.keys(engine).length} cartes (${fr} en français) · ${packs.length} packs · ${readdirSync(dst).length} scripts · ${index.length} cartes dans la recherche`);

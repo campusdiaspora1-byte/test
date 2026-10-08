@@ -8,7 +8,8 @@
     "build": "node scripts/build-data.mjs",
     "dev": "node scripts/dev-server.mjs",
     "test": "node scripts/test-engine.mjs",
-    "sync-hm": "python3 ../edopro/build_edopro.py && rm -rf vendor/hueco-mundo && mkdir -p vendor/hueco-mundo && cp -r ../edopro/dist/expansions/hueco-mundo.cdb ../edopro/dist/expansions/strings.conf ../edopro/dist/expansions/pics ../edopro/dist/expansions/script vendor/hueco-mundo/"
+    "sync-hm": "python3 ../edopro/build_edopro.py && node scripts/pack-from-cdb.mjs ../edopro/dist/expansions/hueco-mundo.cdb packs/hueco-mundo",
+    "validate": "node scripts/validate-pack.mjs"
   },
   "engines": {
     "node": ">=20"

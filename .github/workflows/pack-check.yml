@@ -1,0 +1,102 @@
+# Validation automatique des packs de cartes proposés par Pull Request (dossier online/packs/).
+# Le validateur et la préparation des données viennent de la branche de base : seul le dossier packs/ est pris dans la Pull Request,
+# pour qu'une Pull Request ne puisse pas modifier le validateur pour se faire accepter. Aucun secret, droits en lecture seule.
+# Le rapport est publié en commentaire par pack-report.yml.
+name: Validation des packs
+on:
+  pull_request:
+    paths: ["online/packs/**"]
+permissions:
+  contents: read
+concurrency:
+  group: packs-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Branche de base (validateur)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Pull Request (packs)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: online/package-lock.json
+      - name: Cache des données EDOPro
+        uses: actions/cache@v4
+        with:
+          path: online/.cache
+          key: edopro-data-${{ github.run_id }}
+          restore-keys: edopro-data-
+      - name: Packs de la Pull Request
+        id: packs
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          cd pr
+          git fetch -q origin "$BASE"
+          changed=$(git diff --name-only "$BASE"...HEAD)
+          others=$(echo "$changed" | grep -v '^online/packs/' | grep . || true)
+          slugs=$(echo "$changed" | grep '^online/packs/[^/]*/' | cut -d/ -f3 | sort -u | while read -r s; do [ -d "online/packs/$s" ] && echo "$s"; done | tr '\n' ' ')
+          cd ..
+          rm -rf online/packs && cp -r pr/online/packs online/packs
+          echo "slugs=$slugs" >> "$GITHUB_OUTPUT"
+          { echo "others<<EOF"; echo "$others"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+      - run: npm ci
+        working-directory: online
+      - name: Données (cartes officielles, scripts, packs)
+        run: npm run build
+        working-directory: online
+      - name: Validation
+        id: check
+        working-directory: online
+        env:
+          SLUGS: ${{ steps.packs.outputs.slugs }}
+          OTHERS: ${{ steps.packs.outputs.others }}
+        run: |
+          mkdir -p ../out
+          echo "${{ github.event.pull_request.number }}" > ../out/pr.txt
+          dirs="" bad=""
+          for s in $SLUGS; do
+            if echo "$s" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*$'; then dirs="$dirs packs/$s"; else bad="$bad $s"; fi
+          done
+          status=0
+          if [ -n "$dirs" ]; then
+            node scripts/validate-pack.mjs $dirs --report ../out/report.md --json ../out/result.json || status=$?
+          else
+            printf '<!-- validateur-de-packs -->\n# Validation des packs\n\n' > ../out/report.md
+          fi
+          if [ -n "$bad" ]; then
+            status=1
+            printf '\n❌ Nom de dossier invalide :%s. Un pack s'"'"'appelle `online/packs/<nom>` (minuscules, chiffres, tirets).\n' "$bad" >> ../out/report.md
+          fi
+          if [ -n "$OTHERS" ]; then
+            printf '\n> [!WARNING]\n> Cette Pull Request modifie aussi des fichiers hors de `online/packs/` : ils n'"'"'ont pas été validés et doivent être relus à la main avant d'"'"'approuver.\n>\n' >> ../out/report.md
+            echo "$OTHERS" | head -50 | sed 's/^/> - `/; s/$/`/' >> ../out/report.md
+          fi
+          printf '\n<sub>Publication : un pack validé attend l'"'"'approbation du propriétaire du dépôt (fusion de la Pull Request).</sub>\n' >> ../out/report.md
+          cat ../out/report.md >> "$GITHUB_STEP_SUMMARY"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+      - name: Rapport
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pack-report
+          path: out/
+          retention-days: 14
+      - name: Résultat
+        if: steps.check.outputs.status != '0'
+        run: |
+          echo "::error::Le pack ne passe pas la validation : voir le rapport."
+          exit 1
