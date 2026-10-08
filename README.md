@@ -26,3 +26,12 @@ Pour régénérer `index.html` après avoir modifié la source :
 ```sh
 ./build.sh
 ```
+
+## Arène de jeu en ligne
+
+`game/table.html` est une table de duel en ligne (publiée comme page claude.ai) : deux joueurs s'affrontent en temps
+réel, chacun sur son appareil. Les règles ne sont pas automatisées : comme sur une vraie table, les joueurs déplacent
+leurs cartes et appliquent les effets ensemble. La main, le Deck et l'Extra Deck restent cachés à l'adversaire.
+
+- Decks : cartes de l'atelier (avec visuels) + cartes officielles ajoutées par leur nom (cartes texte).
+- Pour mettre à jour les cartes de l'arène après un nouvel archétype : `python3 tools/build_game.py archetypes/<dossier>`.
