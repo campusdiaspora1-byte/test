@@ -82,7 +82,7 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR021 | Laboratoire de l'Octava Espada - Modification Organique | Magie Continue | Terminée |
 | HMUN-FR022 | Szayel Aporro Granz - Le Huitième Espada | Monstre Union/Effet, Niv. 1, 500/1000 | Terminée |
 | HMUN-FR023 | Ira - La Rage de l'Espada Cero | Magie Jeu-Rapide | Terminée |
-| HMUN-FR024 | Santa Teresa - Le Hierro de la Quinta Espada | Piège Normal | Texte validé · visuel à venir |
+| HMUN-FR024 | Santa Teresa - Le Hierro de la Quinta Espada | Piège Normal | Terminée |
 | HMUN-FR025 | Amor - La Possession de la Séptima Espada | Piège Normal | Texte validé · visuel à venir |
 | HMUN-FR026 | Glotonería - Le Festin de la Novena Espada | Magie Normale | Texte validé · visuel à venir |
 | HMUN-FR013 | Lilynette Gingerbuck - La Fracción du Premier Espada | Monstre à Effet, Niv. 4, 1000/1000 | Terminée (visuel basse résolution, 288×432) |
