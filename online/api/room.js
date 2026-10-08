@@ -1,6 +1,6 @@
 // API des salles (fonction Vercel). GET : vue de la salle. POST : action.
 import { toJSON } from "../lib/engine.mjs";
-import { HttpError, chat, createRoom, joinRoom, rematch, respond, roomView, setDeck, surrender } from "../lib/rooms.mjs";
+import { HttpError, chat, createRoom, joinRoom, rematch, respond, roomView, setDeck, setFormat, surrender } from "../lib/rooms.mjs";
 
 async function readBody(req) {
   if (req.body && typeof req.body === "object") return req.body;
@@ -22,7 +22,8 @@ export default async function handler(req, res) {
     } else if (req.method === "POST") {
       const b = await readBody(req);
       switch (b.action) {
-        case "create": out = await createRoom(b.name); break;
+        case "create": out = await createRoom(b.name, b.format); break;
+        case "format": out = await setFormat(b.code, b.token, b.format); break;
         case "join": out = await joinRoom(b.code, b.name, b.token); break;
         case "deck": out = await setDeck(b.code, b.token, b.deck); break;
         case "respond": out = await respond(b.code, b.token, b.response); out.view = await roomView(b.code, b.token, +(b.from || 0)); break;

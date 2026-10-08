@@ -1,10 +1,12 @@
 // Salles de duel : création, arrivée des joueurs, decks, réponses au moteur.
 import { randomBytes, randomInt } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { AMICAL, deckProblems } from "../public/deckrules.js";
 import { cardInfo, replay, viewFor } from "./engine.mjs";
 import { getStore } from "./store.mjs";
 
-const EXTRA_TYPES = 0x40 | 0x2000 | 0x800000 | 0x4000000; // Fusion, Synchro, Xyz, Lien
-const TOKEN_TYPE = 0x4000;
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // sans 0/O, 1/I/L
 const SEATS = ["A", "B"];
 
@@ -31,28 +33,28 @@ async function save(code, room) {
   return v;
 }
 
-/** Vérifie un deck selon les règles officielles (sans liste de bannissement : parties amicales). */
-export function checkDeck(deck) {
-  const main = (deck && deck.main || []).map(Number), extra = (deck && deck.extra || []).map(Number);
-  const problems = [];
-  const unknown = [...main, ...extra].filter((c) => !cardInfo(c));
-  if (unknown.length) problems.push(`Cartes inconnues : ${[...new Set(unknown)].slice(0, 5).join(", ")}`);
-  if (main.length < 40 || main.length > 60) problems.push(`Le Main Deck doit avoir entre 40 et 60 cartes (il en a ${main.length}).`);
-  if (extra.length > 15) problems.push(`L'Extra Deck a au plus 15 cartes (il en a ${extra.length}).`);
-  if (!unknown.length) {
-    if (main.some((c) => cardInfo(c).type & (EXTRA_TYPES | TOKEN_TYPE))) problems.push("Un monstre Fusion, Synchro, Xyz ou Lien (ou un Jeton) est dans le Main Deck.");
-    if (extra.some((c) => !(cardInfo(c).type & EXTRA_TYPES))) problems.push("L'Extra Deck ne peut contenir que des monstres Fusion, Synchro, Xyz ou Lien.");
-    const copies = {};
-    for (const c of [...main, ...extra]) { const i = cardInfo(c), key = i.alias && Math.abs(i.alias - c) < 20 ? i.alias : c; copies[key] = (copies[key] || 0) + 1; }
-    const over = Object.entries(copies).filter(([, n]) => n > 3);
-    if (over.length) problems.push(`Plus de 3 exemplaires d'une même carte (${over.map(([c]) => c).join(", ")}).`);
+// Formats : Amical (sans liste) ou une liste officielle d'EDOPro (TCG, OCG…)
+let FORMATS = null;
+export function formats() {
+  if (!FORMATS) {
+    let lists = [];
+    try { lists = JSON.parse(readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "data", "lflists.json"), "utf8")); } catch (e) { /* pas encore préparées */ }
+    FORMATS = [AMICAL, ...lists];
   }
-  return { main, extra, problems };
+  return FORMATS;
+}
+const formatOf = (id) => formats().find((f) => f.id === (id || "amical")) || fail(400, "Format inconnu.");
+const formatInfo = (f) => ({ id: f.id, name: f.name, short: f.short || f.name });
+
+/** Vérifie un deck selon les règles officielles et la liste du format (Amical : sans liste). */
+export function checkDeck(deck, format = "amical") {
+  const main = (deck && deck.main || []).map(Number), extra = (deck && deck.extra || []).map(Number);
+  return { main, extra, problems: deckProblems({ main, extra }, cardInfo, formatOf(format)) };
 }
 
-export async function createRoom(name) {
+export async function createRoom(name, format) {
   const store = getStore();
-  const data = { created: Date.now(), status: "lobby", players: { A: { name: cleanName(name), token: newToken(), deck: null }, B: null }, game: null, chat: [] };
+  const data = { created: Date.now(), status: "lobby", format: formatOf(format).id, players: { A: { name: cleanName(name), token: newToken(), deck: null }, B: null }, game: null, chat: [] };
   for (let i = 0; i < 8; i++) {
     const code = newCode();
     if (await store.create(code, data)) return { code, seat: "A", token: data.players.A.token };
@@ -75,12 +77,23 @@ export async function setDeck(code, token, deck) {
   code = String(code || "").toUpperCase();
   const room = await load(code), d = room.data, seat = seatOf(room, token);
   if (d.status !== "lobby") fail(409, "Le duel a déjà commencé.");
-  const { main, extra, problems } = checkDeck(deck);
+  const { main, extra, problems } = checkDeck(deck, d.format);
   if (problems.length) fail(400, problems.join(" "));
   d.players[seat].deck = { main, extra, name: String(deck.name || "Deck").slice(0, 40) };
   if (d.players.A && d.players.A.deck && d.players.B && d.players.B.deck) { startDuel(d); await settle(d, await replay(d.game)); }
   await save(code, room);
   return { ok: true };
+}
+
+// Le créateur de la salle change le format avant le duel : les decks qui ne le respectent plus sont à revalider
+export async function setFormat(code, token, format) {
+  code = String(code || "").toUpperCase();
+  const room = await load(code), d = room.data, seat = seatOf(room, token);
+  if (seat !== "A") fail(403, "Seul le créateur de la salle choisit le format.");
+  if (d.status !== "lobby") fail(409, "Le duel a déjà commencé.");
+  d.format = formatOf(format).id;
+  for (const s of SEATS) if (d.players[s] && d.players[s].deck && checkDeck(d.players[s].deck, d.format).problems.length) d.players[s].deck = null;
+  return { version: await save(code, room) };
 }
 
 function startDuel(d) {
@@ -151,7 +164,7 @@ export async function roomView(code, token, from = 0, knownVersion = 0) {
   if (knownVersion && knownVersion === room.version) return { code, version: room.version, same: true }; // rien de neuf : pas de relecture
   const seat = SEATS.find((s) => token && d.players[s] && d.players[s].token === token) || null;
   const players = Object.fromEntries(SEATS.map((s) => [s, d.players[s] ? { name: d.players[s].name, ready: !!d.players[s].deck, deckName: d.players[s].deck && d.players[s].deck.name } : null]));
-  const out = { code, version: room.version, status: d.status, seat, players, chat: d.chat || [] };
+  const out = { code, version: room.version, status: d.status, seat, players, chat: d.chat || [], format: formatInfo(formatOf(d.format)) };
   if (d.game) {
     const team = seat ? d.game.teams[seat] : 2; // spectateur : ne voit aucune carte cachée
     out.team = team; out.teams = d.game.teams; out.first = d.game.first;

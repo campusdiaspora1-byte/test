@@ -7,6 +7,7 @@
 //  public/t/<n>.json    nom, type et texte des cartes pour l'interface (paquets par code % 100)
 //  public/index-cards.json  liste de recherche du deck : [code, nom FR, nom EN, catégorie, type, niveau, attribut, type de monstre, ATK, DEF]
 //  public/hm/<code>.jpg illustrations des cartes des packs
+//  data/lflists.json, public/lflists.json  formats et listes de cartes interdites / limitées (ProjectIgnis/LFLists)
 //  public/packs.json    les packs (nom, auteur, cartes, Deck de démo, date de publication) pour l'accueil et l'éditeur de deck
 //
 // Sources : ProjectIgnis/BabelCDB et ProjectIgnis/Distribution (EDOPro), mycard/ygopro-database (textes français).
@@ -53,6 +54,7 @@ mkdirSync(CACHE, { recursive: true });
 const babel = clone("ProjectIgnis/BabelCDB", "BabelCDB");
 const scripts = clone("ProjectIgnis/CardScripts", "CardScripts");
 const distrib = clone("ProjectIgnis/Distribution", "Distribution");
+const lflists = clone("ProjectIgnis/LFLists", "LFLists");
 const frCdb = await download("https://raw.githubusercontent.com/mycard/ygopro-database/master/locales/fr-FR/cards.cdb", "fr-FR.cdb");
 // Packs : packs/<nom>/ (Hueco Mundo compris ; régénéré depuis edopro/ par `npm run sync-hm`)
 const packs = existsSync(PACKS) ? readdirSync(PACKS).filter((d) => existsSync(path.join(PACKS, d, "cards.json"))).sort().map((d) => loadPack(path.join(PACKS, d))) : [];
@@ -109,7 +111,7 @@ const chunks = Array.from({ length: CHUNKS }, () => ({}));
 const index = [];
 for (const [id, e] of Object.entries(engine)) {
   const [alias, , type, level, attribute, , atk, def, ls, rs, link] = e, t = text[id];
-  chunks[id % CHUNKS][id] = [t.name, t.desc, t.strs, type, level, ATTR[attribute] || "", +e[5], atk, def, ls, rs, link, t.en || ""];
+  chunks[id % CHUNKS][id] = [t.name, t.desc, t.strs, type, level, ATTR[attribute] || "", +e[5], atk, def, ls, rs, link, t.en || "", alias];
   if (!(type & T.TOKEN) && !(alias && Math.abs(alias - id) < 20)) {
     const race = BigInt(e[5]), raceIdx = race ? (race & -race).toString(2).length - 1 : -1; // n° du bit : Guerrier = 0, Magicien = 1…
     index.push([+id, t.name, t.en && t.en !== t.name ? t.en : "", kindOf(type), type, level, attribute, raceIdx, atk, def]);
@@ -141,6 +143,26 @@ const strings = {};
 for (const k of Object.keys(en)) strings[k] = { ...en[k], ...frs[k], ...ours[k] };
 writeFileSync(path.join(DATA, "strings.json"), JSON.stringify(strings));
 writeFileSync(path.join(PUB, "strings.json"), JSON.stringify(strings));
+
+// ---------- formats (listes des cartes interdites et limitées d'EDOPro) ----------
+// Fichier .lflist.conf : « !nom de la liste », « $whitelist » (seules les cartes listées sont permises), puis « code nombre --nom »
+const FORMATS = [["tcg", "0TCG.lflist.conf", "TCG"], ["ocg", "OCG.lflist.conf", "OCG"], ["world", "World.lflist.conf", "Worlds"],
+  ["traditional", "Traditional.lflist.conf", "Traditionnel"], ["goat", "GOAT.lflist.conf", "GOAT"]];
+const formats = [];
+for (const [id, file, short] of FORMATS) {
+  const f = path.join(lflists, file);
+  if (!existsSync(f)) { console.warn("liste absente :", file); continue; }
+  const list = { id, short, name: short, whitelist: false, cards: {} };
+  for (const line of readFileSync(f, "utf8").split(/\r?\n/)) {
+    if (line.startsWith("!")) list.name = line.slice(1).trim();
+    else if (line.trim() === "$whitelist") list.whitelist = true;
+    else { const m = /^(\d+)\s+(-?\d+)/.exec(line); if (m) list.cards[m[1]] = Math.max(0, Math.min(3, +m[2])); }
+  }
+  formats.push(list);
+}
+writeFileSync(path.join(DATA, "lflists.json"), JSON.stringify(formats));
+writeFileSync(path.join(PUB, "lflists.json"), JSON.stringify(formats));
+version.update(JSON.stringify(formats));
 
 // ---------- scripts ----------
 const dst = path.join(DATA, "scripts");
@@ -176,4 +198,4 @@ for (const p of packs) {
 writeFileSync(path.join(PUB, "packs.json"), JSON.stringify({ v: version.digest("hex").slice(0, 12), packs: list }));
 if (sources.rejected.length) console.warn("cartes refusées (numéro déjà pris) :", sources.rejected.map((r) => `${r.pack}/${r.id} (${r.owner})`).join(", "));
 
-console.log(`${Object.keys(engine).length} cartes (${fr} en français) · ${packs.length} packs · ${readdirSync(dst).length} scripts · ${index.length} cartes dans la recherche`);
+console.log(`${Object.keys(engine).length} cartes (${fr} en français) · ${packs.length} packs · formats ${formats.map((f) => f.name).join(", ")} · ${readdirSync(dst).length} scripts · ${index.length} cartes dans la recherche`);

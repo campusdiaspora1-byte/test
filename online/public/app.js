@@ -1,4 +1,5 @@
 // Duel Hueco Mundo : interface. Le serveur (moteur d'EDOPro) décide de tout ; la page affiche le terrain et pose ses questions.
+import { AMICAL, LIMIT_NAMES, deckProblems, limitOf } from "/deckrules.js";
 const SUPABASE_URL = "https://wympdgzjhsrmdkcpvouw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_KBs-rT5siZVy4mt3rObQVQ_vLXvdaBr";
 
@@ -31,10 +32,11 @@ const store = {
 const HM = (n) => 711000000 + n;
 const DEMO = { id: "demo", name: "Hueco Mundo · démo", main: [1, 1, 1, 6, 6, 6, 4, 9, 9, 11, 11, 13, 13, 20, 20, 20, 5, 5, 5, 22, 22, 14, 16, 18, 2, 2, 2, 3, 3, 3, 7, 7, 8, 21, 23, 24, 25, 26, 26, 8].map(HM), extra: [10, 12, 15, 17, 19].map(HM) };
 const S = {
+  fmt: store.get("fmt", "amical"),
   name: store.get("name", ""), decks: store.get("decks", []), deckSel: store.get("deck-sel", "demo"),
   code: null, token: null, view: null, version: 0, log: [], logEnd: 0, busy: false, picks: [], focus: null, editing: null, search: "", announce: "",
   tab: "play", selCard: null, rooms: store.get("rooms", []),
-  f: { cat: "all", sub: "", attr: "", race: "", lvl: "", sort: "name" }, limit: 60,
+  f: { cat: "all", sub: "", attr: "", race: "", lvl: "", ban: "", sort: "name" }, limit: 60,
 };
 const TEXT = {}, CHUNK = {};
 let STR = { system: {} }, INDEX = null;
@@ -46,7 +48,21 @@ const META = fetch("/packs.json", { cache: "no-cache" }).then((r) => r.json()).t
   for (const p of PACKS) for (const c of p.cards) CUSTOM.add(c);
   const f = featured(); if (f) [f.cover, ...f.deck.main.slice(0, 8)].forEach(text);
   render();
+  return fetch(`/lflists.json?v=${VER}`).then((r) => r.json()).then((l) => { FORMATS = [AMICAL, ...l]; render(); });
 }).catch(() => {});
+// Formats : Amical (sans liste) ou une liste officielle d'EDOPro (ProjectIgnis/LFLists)
+let FORMATS = [AMICAL];
+const fmtOf = (id) => FORMATS.find((f) => f.id === id) || AMICAL;
+const fmtName = (f) => (f.id === "amical" ? "Amical · sans liste" : f.name);
+const fmtSelect = (id, val, label) => `<select id="${id}" aria-label="${label}">${FORMATS.map((f) => `<option value="${f.id}" ${f.id === val ? "selected" : ""}>${esc(fmtName(f))}</option>`).join("")}</select>`;
+const cardRule = (c) => { const t = text(c); return t ? { type: t.type, alias: t.alias || 0 } : null; };
+const limitBadge = (c, f) => { const n = limitOf(c, cardRule(c), f); return n < 3 ? `<span class="lim lim-${n}" title="${n ? LIMIT_NAMES[n] : f.whitelist ? "hors liste" : "interdite"} (${esc(f.short || f.name)})">${n}</span>` : ""; };
+// Problèmes du deck dans un format ; null tant que les textes des cartes ne sont pas chargés
+function checkDeck(d, f) {
+  const all = [...d.main, ...d.extra];
+  if (all.some((c) => !text(c))) return null;
+  return deckProblems(d, cardRule, f, cname);
+}
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 let toastT; function toast(m) { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 3200); }
@@ -58,7 +74,7 @@ function text(code) {
   if (TEXT[code]) return TEXT[code];
   const n = code % 100;
   if (!CHUNK[n]) CHUNK[n] = META.then(() => fetch(`/t/${n}.json?v=${VER}`)).then((r) => r.json()).then((ch) => {
-    for (const k in ch) { const [name, desc, strs, type, level, attr, race, atk, def, ls, rs, link, en] = ch[k]; TEXT[k] = { name, desc, strs, type, level, attr, race, atk, def, ls, rs, link, en }; }
+    for (const k in ch) { const [name, desc, strs, type, level, attr, race, atk, def, ls, rs, link, en, alias] = ch[k]; TEXT[k] = { name, desc, strs, type, level, attr, race, atk, def, ls, rs, link, en, alias }; }
     render();
   }).catch(() => {});
   return null;
@@ -307,6 +323,7 @@ function viewPlay() {
       <div class="deck-preview">${preview.map((c, i) => `<div class="mini-stack" style="transform:translateX(${i * -8}px)">${thumb(c)}</div>`).join("")}</div>
       <div class="deck-stats"><span><strong>${d.main.length}</strong> cartes</span><span><strong>${st.m}</strong> monstres</span><span><strong>${st.s}</strong> magies</span><span><strong>${st.t}</strong> pièges</span><span><strong>${d.extra.length}</strong> extra</span></div>
       <label class="field">Ton pseudo<input id="pname" maxlength="24" value="${esc(S.name)}" placeholder="ex. Ichigo"></label>
+      <label class="field">Format de la salle${fmtSelect("fmt", S.fmt, "Format de la salle")}</label>
       <button class="launch-action" data-a="create"><span>${icon("swords")}</span><div><small>PARTIE PRIVÉE</small><strong>CRÉER UNE SALLE</strong></div>${icon("chevron")}</button>
     </div>
   </section>${footer()}`;
@@ -337,6 +354,7 @@ function filteredCards() {
   const f = S.f, q = norm(S.search.trim()), sub = f.sub ? (f.sub === "n" ? "n" : parseInt(f.sub, 16)) : 0;
   const SUB_FLAGS = 0x10000 | 0x20000 | 0x40000 | 0x80000 | 0x80 | 0x100000;
   const pk = f.cat.startsWith("pack:") && PACKS.find((p) => "pack:" + p.slug === f.cat), pack = f.cat.startsWith("pack:") ? new Set(pk ? pk.cards : []) : null;
+  const fl = fmtOf(S.fmt);
   let list = INDEX.filter((c) => {
     if (q.length > 1 && !c.key.includes(q)) return false;
     if (f.cat === "hm") { if (c.code < HM_FIRST || c.code >= HM_LAST) return false; }
@@ -347,6 +365,7 @@ function filteredCards() {
     if (f.attr && c.attr !== +f.attr) return false;
     if (f.race !== "" && c.race !== +f.race) return false;
     if (f.lvl && (!isMonster(c) || c.level !== +f.lvl)) return false;
+    if (f.ban !== "" && f.ban != null && limitOf(c.code, null, fl) !== +f.ban) return false;
     return true;
   });
   const [key, dir] = [f.sort.replace(/[+-]$/, ""), f.sort.endsWith("+") ? 1 : -1];
@@ -362,18 +381,16 @@ function filterBar() {
     ${mon ? sel("f-attr", [["", "Tous les attributs"], ...ATTRS.map(([b, n]) => [b, n])], f.attr, "Attribut") : ""}
     ${mon ? sel("f-race", [["", "Tous les types"], ...RACES.slice(0, 26).map((n, i) => [i, n])], f.race, "Type de monstre") : ""}
     ${mon ? sel("f-lvl", [["", "Tous les niveaux"], ...Array.from({ length: 13 }, (_, i) => [i + 1, `Niveau / Rang ${i + 1}`])], f.lvl, "Niveau") : ""}
+    ${S.fmt !== "amical" ? sel("f-ban", [["", "Tous les statuts"], ["0", fmtOf(S.fmt).whitelist ? "Non permises" : "Interdites"], ["1", "Limitées (1)"], ["2", "Semi-limitées (2)"], ["3", "Libres (3)"]], f.ban ?? "", "Statut dans le format") : ""}
     ${sel("f-sort", SORTS, f.sort, "Tri")}
-    ${f.cat !== "all" || f.sub || f.attr || f.race !== "" || f.lvl || f.sort !== "name" || S.search ? `<button class="ghost-action" data-a="resetfilters">Effacer les filtres</button>` : ""}</div>`;
+    ${f.cat !== "all" || f.sub || f.attr || f.race !== "" || f.lvl || f.ban || f.sort !== "name" || S.search ? `<button class="ghost-action" data-a="resetfilters">Effacer les filtres</button>` : ""}</div>`;
 }
 function viewDecks() {
   const d = ensureEditing(), counts = deckCounts(d);
-  const problems = [];
-  if (d.main.length < 40 || d.main.length > 60) problems.push(`Main Deck : ${d.main.length} cartes (40 à 60)`);
-  if (d.extra.length > 15) problems.push(`Extra Deck : ${d.extra.length} cartes (15 max)`);
-  const over = Object.entries(counts).filter(([, n]) => n > 3); if (over.length) problems.push(`Plus de 3 exemplaires : ${over.map(([c]) => cname(c)).join(", ")}`);
+  const fmt = fmtOf(S.fmt), problems = checkDeck(d, fmt);
   const all = filteredCards(), results = all ? all.slice(0, S.limit).map((c) => c.code) : [];
   const sel = S.selCard || results[0], st = text(sel), stats = deckStats(d);
-  const row = (code, part) => { const t = text(code); return `<div class="deck-list-row"><div class="thumb">${thumb(code)}</div><div><strong>${esc(t ? t.name : code)}</strong><small>${esc(t ? typeLine(t).split(" · ").slice(0, 2).join(" · ") : "")}</small></div><span>×${counts[code]}</span><button aria-label="Retirer ${esc(t ? t.name : "")}" data-a="rmcard" data-c="${code}" data-p="${part}">${icon("x", 14)}</button></div>`; };
+  const row = (code, part) => { const t = text(code); return `<div class="deck-list-row"><div class="thumb">${thumb(code)}${limitBadge(code, fmt)}</div><div><strong>${esc(t ? t.name : code)}</strong><small>${esc(t ? typeLine(t).split(" · ").slice(0, 2).join(" · ") : "")}</small></div><span>×${counts[code]}</span><button aria-label="Retirer ${esc(t ? t.name : "")}" data-a="rmcard" data-c="${code}" data-p="${part}">${icon("x", 14)}</button></div>`; };
   const uniq = (a) => [...new Set(a)];
   return `<section class="page">
     <header class="section-heading"><div><div class="eyebrow"><span></span> ATELIER DU DUELLISTE</div><div class="section-title">ÉDITEUR DE DECK</div><p>Construis ta stratégie : toutes les cartes officielles, l'archétype Hueco Mundo et les packs de la communauté.</p></div></header>
@@ -383,13 +400,13 @@ function viewDecks() {
         ${allDecks().map((x) => `<button class="deck-option ${x.id === S.deckSel ? "selected" : ""}" data-a="pickdeck" data-id="${esc(x.id)}"><span class="deck-option-icon">${icon("cards")}</span><span><strong>${esc(x.name)}</strong><small>${x.main.length} + ${x.extra.length} cartes${isDemo(x) ? " · démo" : ""}</small></span></button>`).join("")}
         <button class="new-deck" data-a="newdeck">${icon("plus", 17)}NOUVEAU DECK</button>
         <details class="import-box"><summary>Importer un .ydk</summary><input type="file" id="ydk" accept=".ydk,text/plain" aria-label="Fichier .ydk"><textarea id="ydktxt" placeholder="ou colle le contenu du .ydk ici"></textarea><button class="ghost-action" data-a="pasteydk">Importer le texte</button></details>
-        <div class="deck-rules">${icon("shield", 18)}<div><strong>FORMAT AMICAL</strong><span>40 à 60 cartes · Extra Deck 15 max · 3 exemplaires max · sans liste de bannissement</span></div></div>
+        <div class="deck-rules">${icon("shield", 18)}<div><strong>FORMAT</strong>${fmtSelect("fmtpick", S.fmt, "Format")}<span>40 à 60 cartes · Extra Deck 15 max · 3 exemplaires max${fmt.id === "amical" ? " · sans liste de bannissement" : fmt.whitelist ? ` · seulement les ${Object.keys(fmt.cards).length} cartes de la liste` : ` · liste ${esc(fmt.name)} : ${Object.values(fmt.cards).filter((n) => n === 0).length} interdites, ${Object.values(fmt.cards).filter((n) => n === 1).length} limitées, ${Object.values(fmt.cards).filter((n) => n === 2).length} semi-limitées`}</span></div></div>
       </aside>
       <div class="collection-panel">
         <div class="collection-toolbar"><div class="search-field">${icon("search", 18)}<input id="dsearch" value="${esc(S.search)}" placeholder="Rechercher une carte (français ou anglais)…" aria-label="Rechercher une carte"></div>
           <span class="collection-count">${all ? `${all.length.toLocaleString("fr-FR")} CARTES` : "CHARGEMENT…"}</span></div>
         ${filterBar()}
-        <div class="card-grid">${results.map((c) => `<button class="collection-card ${sel === c ? "selected" : ""}" data-a="addcard" data-c="${c}" aria-label="Ajouter ${esc(cname(c))}">${thumb(c)}${counts[c] ? `<span class="owned">×${counts[c]}</span>` : ""}<span class="add-card">${icon("plus", 14)}</span></button>`).join("") || `<p class="muted">${all ? "Aucune carte ne correspond à ces filtres." : "Chargement des 14 000 cartes…"}</p>`}</div>
+        <div class="card-grid">${results.map((c) => `<button class="collection-card ${sel === c ? "selected" : ""}" data-a="addcard" data-c="${c}" aria-label="Ajouter ${esc(cname(c))}">${thumb(c)}${limitBadge(c, fmt)}${counts[c] ? `<span class="owned">×${counts[c]}</span>` : ""}<span class="add-card">${icon("plus", 14)}</span></button>`).join("") || `<p class="muted">${all ? "Aucune carte ne correspond à ces filtres." : "Chargement des 14 000 cartes…"}</p>`}</div>
         ${all && all.length > S.limit ? `<button class="ghost-action more" data-a="more">Afficher plus (${(all.length - S.limit).toLocaleString("fr-FR")} restantes)</button>` : ""}
         <div class="card-detail"><div class="detail-accent"></div><div><small class="label">Carte sélectionnée</small><strong>${esc(cname(sel))}</strong><span>${esc(typeLine(st))}</span><p>${esc(st ? st.desc : "")}</p></div></div>
       </div>
@@ -399,7 +416,7 @@ function viewDecks() {
           <div class="deck-meter"><i class="${d.main.length > 60 ? "over" : ""}" style="width:${Math.min(100, (d.main.length / 40) * 100)}%"></i></div></div>
         <div class="deck-card-list">${uniq(d.main).map((c) => row(c, "main")).join("") || `<p class="muted small">Clique sur une carte pour l'ajouter.</p>`}
           ${d.extra.length ? `<div class="list-title">EXTRA DECK (${d.extra.length})</div>${uniq(d.extra).map((c) => row(c, "extra")).join("")}` : ""}</div>
-        <div class="problems">${problems.length ? problems.map((p) => `<div class="bad">✗ ${esc(p)}</div>`).join("") : `<div class="ok">✓ Deck valide</div>`}</div>
+        <div class="problems">${!problems ? `<div class="muted small">Vérification…</div>` : problems.length ? problems.map((p) => `<div class="bad">✗ ${esc(p)}</div>`).join("") : `<div class="ok">✓ Deck valide en format ${esc(fmt.short || fmt.name)}</div>`}</div>
         <div class="deck-summary"><div><span>Monstres</span><strong>${stats.m}</strong></div><div><span>Magies</span><strong>${stats.s}</strong></div><div><span>Pièges</span><strong>${stats.t}</strong></div><div><span>Extra</span><strong>${d.extra.length}</strong></div></div>
         <button class="save-button" data-a="savedeck">${d.fromDemo ? "ENREGISTRER UNE COPIE" : "SAUVEGARDER LE DECK"}</button>
         ${d.id !== "new" ? `<button class="ghost-action danger-action" data-a="deldeck">${S.armed === "del" ? "Confirmer la suppression ?" : "Supprimer ce deck"}</button>` : ""}
@@ -434,6 +451,7 @@ function viewPrep() {
     <div class="room-code">${esc(v.code)}</div>
     <div class="players-loading"><span>${pl("A")}</span><strong>VS</strong><span>${pl("B")}</span></div>
     <div class="prep-box">
+      <div class="field">Format${me === "A" && v.status === "lobby" ? fmtSelect("roomfmt", v.format ? v.format.id : "amical", "Format de la salle") : `<div class="fmt-tag">${esc(v.format ? (v.format.id === "amical" ? fmtName(AMICAL) : v.format.name) : fmtName(AMICAL))}</div>`}</div>
       <div class="field">Lien d'invitation<div class="row"><input id="rlink" readonly value="${esc(link)}"><button class="ghost-action" data-a="copylink">${icon("copy", 15)}Copier</button></div></div>
       ${me ? (v.players[me].ready ? `<p class="muted small" style="margin:0">Ton deck est validé. Le duel commence dès que ton adversaire a validé le sien.</p>`
         : `<div class="field">Ton deck<div class="row"><select id="deckpick" aria-label="Deck">${allDecks().map((x) => `<option value="${esc(x.id)}" ${x.id === d.id ? "selected" : ""}>${esc(x.name)} (${x.main.length} + ${x.extra.length})</option>`).join("")}</select><button class="primary-action" data-a="ready">Valider</button></div></div>`)
@@ -815,7 +833,7 @@ const ACT = {
   tab(el) { if (S.code) leave(); S.tab = el.dataset.t; if (S.tab !== "decks") S.editing = null; render(); window.scrollTo(0, 0); },
   async create() {
     if (!S.name) { S.tab = S.tab === "rooms" ? "rooms" : "play"; render(); const f = $("#pname"); if (f) f.focus(); return toast("Choisis d'abord un pseudo."); }
-    try { const r = await api({ action: "create", name: S.name }); store.set("room-" + r.code, r.token); enter(r.code, r.token); } catch (e) { toast(e.message); }
+    try { const r = await api({ action: "create", name: S.name, format: S.fmt }); store.set("room-" + r.code, r.token); enter(r.code, r.token); } catch (e) { toast(e.message); }
   },
   reopen(el) { const c = el.dataset.c; enter(c, store.get("room-" + c)); },
   async joinhere() {
@@ -835,6 +853,8 @@ const ACT = {
   async ready() {
     const pick = $("#deckpick"); if (pick) { S.deckSel = pick.value; store.set("deck-sel", S.deckSel); }
     const d = allDecks().find((x) => x.id === S.deckSel) || DEMO;
+    const pb = S.view && S.view.format && checkDeck(d, fmtOf(S.view.format.id));
+    if (pb && pb.length) return toast(pb[0]);
     try { await api({ action: "deck", code: S.code, token: S.token, deck: { name: d.name, main: d.main, extra: d.extra } }); await refresh(true); } catch (e) { toast(e.message); }
   },
   newdeck() { S.editing = { id: "new", name: "Nouveau deck", main: [], extra: [] }; S.deckSel = null; loadIndex().then(render); render(); },
@@ -848,7 +868,9 @@ const ACT = {
   addcard(el) {
     const c = +el.dataset.c, t = text(c), d = S.editing;
     S.selCard = c;
-    if ((deckCounts(d)[c] || 0) >= 3) { render(); return toast("3 exemplaires maximum."); }
+    const f = fmtOf(S.fmt), max = limitOf(c, cardRule(c), f), base = (x) => { const r = cardRule(x); return r && r.alias && Math.abs(r.alias - x) < 20 ? r.alias : x; };
+    const have = [...d.main, ...d.extra].filter((x) => base(x) === base(c)).length;
+    if (have >= max) { render(); return toast(max === 0 ? `${cname(c)} : ${f.whitelist ? "hors de la liste" : "interdite"} en format ${f.short || f.name}.` : max < 3 ? `${cname(c)} : ${LIMIT_NAMES[max]} en format ${f.short || f.name} (${max} max).` : "3 exemplaires maximum."); }
     const isExtra = t ? t.type & EXTRA_T : INDEX && (INDEX.find((x) => x.code === c) || {}).k === "x";
     (isExtra ? d.extra : d.main).push(c); render();
   },
@@ -880,7 +902,7 @@ const ACT = {
   mini() { S.mini = true; render(); },
   unmini() { S.mini = false; render(); },
   more() { S.limit += 60; render(); },
-  resetfilters() { S.f = { cat: "all", sub: "", attr: "", race: "", lvl: "", sort: "name" }; S.search = ""; S.limit = 60; render(); },
+  resetfilters() { S.f = { cat: "all", sub: "", attr: "", race: "", lvl: "", ban: "", sort: "name" }; S.search = ""; S.limit = 60; render(); },
   raw(el) { send(JSON.parse(el.dataset.r)); },
   pickc(el) {
     const p = S.view.duel.prompt, i = +el.dataset.i;
@@ -946,7 +968,9 @@ document.addEventListener("input", (e) => {
 document.addEventListener("change", (e) => {
   if (e.target.id === "ydk" && e.target.files[0]) { const r = new FileReader(); r.onload = () => importYdk(r.result); r.readAsText(e.target.files[0]); }
   if (e.target.id === "deckpick") { S.deckSel = e.target.value; store.set("deck-sel", S.deckSel); }
-  const fk = { "f-cat": "cat", "f-sub": "sub", "f-attr": "attr", "f-race": "race", "f-lvl": "lvl", "f-sort": "sort" }[e.target.id];
+  if (e.target.id === "fmtpick" || e.target.id === "fmt") { S.fmt = e.target.value; store.set("fmt", S.fmt); if (S.fmt === "amical") S.f.ban = ""; render(); }
+  if (e.target.id === "roomfmt") api({ action: "format", code: S.code, token: S.token, format: e.target.value }).then(() => refresh(true)).catch((err) => { toast(err.message); render(); });
+  const fk = { "f-cat": "cat", "f-sub": "sub", "f-attr": "attr", "f-race": "race", "f-lvl": "lvl", "f-ban": "ban", "f-sort": "sort" }[e.target.id];
   if (fk) { S.f[fk] = e.target.value; if (fk === "cat") S.f.sub = ""; S.limit = 60; render(); }
 });
 
