@@ -2,7 +2,7 @@
 
 usage : python3 tools/build_game.py archetypes/hueco-mundo
 """
-import json, sys
+import json, re, sys
 from pathlib import Path
 from PIL import Image
 
@@ -13,6 +13,15 @@ ABIL = {"flip": "Flip", "gemini": "Gémeau", "spirit": "Spirit", "toon": "Toon",
 SPELL = {"normal": "Normale", "quickplay": "Jeu-Rapide", "continuous": "Continue", "field": "Terrain", "equip": "Équipement", "ritual": "Rituelle"}
 TRAP = {"normal": "Normal", "continuous": "Continu", "counter": "Contre-Piège"}
 EXTRA = {"fusion", "synchro", "xyz", "link"}
+# Même codage que tools/build_official.py (6e colonne de l'index) : sous-type ou Niveau + drapeaux
+ST_RULE = {"normal": "n", "quickplay": "q", "continuous": "c", "equip": "e", "field": "f", "ritual": "r", "counter": "k"}
+NOMI = re.compile(r"ne peut pas être Invoqu\w* Normalement|Ni Invocable Normalement", re.I)
+
+
+def rule(c):
+    if c["kind"] != "monster":
+        return ST_RULE.get(c["stType"], "n")
+    return str(c["level"]) + ("p" if c.get("pendulum") else "") + ("R" if c["frame"] == "ritual" else "") + ("u" if NOMI.search(c["text"]) else "")
 
 
 def line(c):
@@ -50,7 +59,7 @@ def main(folder):
         img.save(out / "cards" / f"{cid}.jpg", quality=80, optimize=True)
         kind = "x" if c["kind"] == "monster" and c["frame"] in EXTRA else {"monster": "m", "spell": "s", "trap": "t"}[c["kind"]]
         cards.append({"cid": cid, "name": c["name"], "kind": kind, "field": c["kind"] == "spell" and c["stType"] == "field",
-                      "line": line(c), "stats": stats(c), "text": c["text"], "img": f"cards/{cid}.jpg"})
+                      "rule": rule(c), "line": line(c), "stats": stats(c), "text": c["text"], "img": f"cards/{cid}.jpg"})
     (out / "cards.json").write_text(json.dumps(cards, ensure_ascii=False, indent=1))
     print(len(cards), "cartes")
 

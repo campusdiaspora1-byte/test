@@ -181,7 +181,7 @@ async function loadIndex() {
   try {
     const d = await (await fetch("ygo/index.json")).json();
     Object.assign(ALIAS, d.alias || {});
-    IDXLIST = d.cards.map(([id, n, en, k, f, field]) => { const o = { cid: "ygo:" + id, id, name: n, en: en || "", kind: k, frame: f, field: !!field, key: norm(n + " " + (en || "")) }; IDX.set(o.cid, o); return o; });
+    IDXLIST = d.cards.map(([id, n, en, k, f, r]) => { const rule = r === 1 ? "f" : r || ""; const o = { cid: "ygo:" + id, id, name: n, en: en || "", kind: k, frame: f, rule, field: rule === "f" && k === "s", key: norm(n + " " + (en || "")) }; IDX.set(o.cid, o); return o; });
     idxReady = true; render(); if (S.sheet) renderSheet();
   } catch (e) { idxReady = false; }
 }
@@ -298,7 +298,7 @@ function move(loc, dest, how = "") {
   let z = dest.z;
   if (isExtra(card.c) && (z === "hand" || z === "deck")) z = "extra";
   let c;
-  if (toField) c = { u: card.u, c: card.c, f: dest.f || "up", p: dest.p || "atk", n: fromField ? card.n || 0 : 0, m: fromField ? card.m || [] : [] };
+  if (toField) c = { u: card.u, c: card.c, f: dest.f || "up", p: dest.p || "atk", n: fromField ? card.n || 0 : 0, m: fromField ? card.m || [] : [], t: fromField ? card.t : turnNo(), pc: fromField ? card.pc : turnNo() };
   else c = bare(card);
   if (z === "m" || z === "s" || z === "e") M[z][dest.i] = c;
   else if (z === "fz") M.fz = c;
@@ -311,26 +311,93 @@ function move(loc, dest, how = "") {
   commit();
 }
 
+/* ---------- règles ---------- */
+const turnNo = () => (S.game && S.game.turnNo) || 1;
+const myTurn = () => !!S.seat && (S.solo || (S.game && S.game.turn === S.seat));
+const mainPhase = () => [2, 4].includes((S.game && S.game.phase) || 0);
+const battlePhase = () => ((S.game && S.game.phase) || 0) === 3;
+// Règles d'une carte (voir tools/build_official.py) : sous-type de Magie/Piège, ou Niveau + p (Pendule), R (Rituel), u (pas d'Invocation Normale)
+function rules(cid) {
+  const m = meta(cid), r = m.rule;
+  if (r == null || r === "") return null; // carte tapée à la main : on ne sait pas, tout reste permis
+  if (m.kind === "s" || m.kind === "t") return { sub: r };
+  return { lvl: parseInt(r, 10) || 0, pend: r.includes("p"), ritual: r.includes("R"), nomi: r.includes("u") };
+}
+const tributesFor = (lvl) => (lvl >= 7 ? 2 : lvl >= 5 ? 1 : 0);
+// Action soumise à une règle : refusée avec l'explication, ou (soft) confirmée par un 2e clic quand un effet peut l'autoriser
+function rule(fn, checks) {
+  return () => {
+    for (const [bad, msg, soft] of checks) {
+      if (!bad) continue;
+      if (soft) { if (arm("rule-" + msg)) continue; toast(msg + " Clique encore si un effet le permet."); return; }
+      return toast(msg);
+    }
+    fn();
+  };
+}
+const NOT_MINE = "Ce n'est pas ton tour.";
+const NOT_MAIN = "Seulement pendant ta Main Phase 1 ou 2 (avance avec « Phase suivante »).";
+
 /* ---------- actions d'une carte ---------- */
 function startPlacing(loc, target, opts, label) { S.placing = { loc, target, opts, label }; closeSheet(); closeModal(); render(); toast(label + " : choisis une zone en surbrillance"); }
+function startTribute(loc, need, opts, label) {
+  S.placing = { loc, target: "trib", need, picked: [], then: { target: "m", opts, label } }; closeSheet(); closeModal(); render();
+  toast(`${label} : choisis ${need} monstre${need > 1 ? "s" : ""} à Sacrifier`);
+}
+function normalSummon(loc, card, opts, label) {
+  const R = rules(card.c), M = S.mine, need = R ? tributesFor(R.lvl) : 0;
+  const mons = [...M.m, ...M.e].filter(Boolean).length;
+  const go = () => {
+    M.ns = turnNo();
+    if (!need) return startPlacing(loc, "m", opts, label);
+    if (mons < need) { toast(`Niveau ${R.lvl} : il faut ${need} Sacrifice${need > 1 ? "s" : ""}, tu contrôles ${mons} monstre${mons > 1 ? "s" : ""}.`); M.ns = 0; return; }
+    startTribute(loc, need, opts, label);
+  };
+  return rule(go, [[!myTurn(), NOT_MINE], [!mainPhase(), NOT_MAIN],
+    [M.ns === turnNo(), "Tu as déjà fait ton Invocation Normale (ou Pose) ce tour.", true]]);
+}
 function actionsFor(loc) {
   const c = getAt(loc); if (!c) return [];
-  const k = meta(c.c).kind, A = [], P = (t, o, l) => () => startPlacing(loc, t, o, l);
+  const m = meta(c.c), k = m.kind, R = rules(c.c), A = [], P = (t, o, l) => () => startPlacing(loc, t, o, l);
   const to = (z, how, extra = {}) => () => { closeSheet(); closeModal(); move(loc, { z, ...extra }, how); };
+  const sub = R && R.sub, isField = sub ? sub === "f" : !!m.field;
   if (loc.z === "hand") {
-    if (k === "m") A.push(["Invoquer Normalement", P("m", { f: "up", p: "atk" }, "Invocation Normale")], ["Poser (DEF face verso)", P("m", { f: "down", p: "def" }, "Pose d'un monstre")]);
+    if (k === "m") {
+      if (!R || !(R.nomi || R.ritual)) A.push(["Invoquer Normalement", normalSummon(loc, c, { f: "up", p: "atk" }, "Invocation Normale")], ["Poser (DEF face verso)", normalSummon(loc, c, { f: "down", p: "def" }, "Pose d'un monstre")]);
+      if (R && R.pend) A.push(["Placer en Zone Pendule", rule(P("pz", { f: "up" }, "Échelle Pendule"), [[!myTurn(), NOT_MINE], [!mainPhase(), NOT_MAIN]])]);
+    }
     if (k === "m" || k === "tok") A.push(["Invocation Spéciale ATK", P("me", { f: "up", p: "atk" }, "Invocation Spéciale")], ["Invocation Spéciale DEF", P("me", { f: "up", p: "def" }, "Invocation Spéciale")]);
-    if (k === "s" || k === "t") {
-      if (meta(c.c).field || (k === "s" && c.c.startsWith("txt:"))) A.push(["Activer en Zone Terrain", P("fz", { f: "up" }, "Activation")]);
-      A.push(["Activer", P("s", { f: "up" }, "Activation")], ["Poser face verso", P("s", { f: "down" }, "Pose")]);
+    if (k === "s") {
+      const when = sub === "q" ? [[!myTurn(), "Une Magie Jeu-Rapide ne s'active depuis la main que pendant ton tour."]] : [[!myTurn(), NOT_MINE], [!mainPhase(), NOT_MAIN]];
+      const setRule = [[!myTurn(), NOT_MINE], [!mainPhase(), NOT_MAIN]];
+      if (isField) A.push(["Activer en Zone Terrain", rule(P("fz", { f: "up" }, "Activation"), when)], ["Poser en Zone Terrain", rule(P("fz", { f: "down" }, "Pose"), setRule)]);
+      else A.push(["Activer", rule(P("s", { f: "up" }, "Activation"), when)], ["Poser face verso", rule(P("s", { f: "down" }, "Pose"), setRule)]);
+      if (!R && !isField) A.push(["Activer en Zone Terrain", P("fz", { f: "up" }, "Activation")]); // carte tapée : on ne connaît pas son type
+    }
+    if (k === "t") {
+      A.push(["Poser face verso", rule(P("s", { f: "down" }, "Pose"), [[!myTurn(), NOT_MINE], [!mainPhase(), NOT_MAIN]])]);
+      A.push(["Activer depuis la main (effet)", rule(P("s", { f: "up" }, "Activation"), [[true, "Un Piège doit d'abord être Posé, puis activé à partir du tour suivant.", true]])]);
     }
     A.push(["Défausser", to("gy", "Défausse")], ["Bannir", to("ban")], ["Révéler", () => { log(`Révèle ${nm(c)} depuis sa main`); closeSheet(); commit(); }],
       ["Au-dessus du Deck", to("deck", "", { top: true })], ["Mélanger dans le Deck", to("deck")]);
   } else if (FIELD.has(loc.z)) {
     const mon = loc.z === "m" || loc.z === "e";
-    if (mon) A.push([c.p === "def" ? "Passer en ATK" : "Passer en DEF", () => { c.p = c.p === "def" ? "atk" : "def"; if (c.p === "atk") c.f = "up"; log(`${c.f === "down" ? "Un monstre" : nm(c)} passe en ${c.p === "def" ? "DEF" : "ATK"}`); closeSheet(); commit(); }],
-      ["Déclarer une attaque", () => { log(`${nm(c)} déclare une attaque`, "atk"); closeSheet(); commit(); }]);
-    A.push([c.f === "down" ? (mon ? "Retourner face recto" : "Activer (retourner)") : "Retourner face verso", () => { c.f = c.f === "down" ? "up" : "down"; if (mon && c.f === "down") c.p = "def"; log(c.f === "up" ? `${nm(c)} est retournée face recto` : `Une carte est retournée face verso`); closeSheet(); commit(); }]);
+    const fresh = c.pc === turnNo();
+    if (mon) {
+      if (c.f === "down") A.push(["Invocation Flip", rule(() => { c.f = "up"; c.p = "atk"; c.pc = turnNo(); log(`Invocation Flip : ${nm(c)}`); closeSheet(); commit(); },
+        [[!myTurn(), NOT_MINE], [!mainPhase(), NOT_MAIN], [fresh, "Un monstre ne peut pas être Invoqué par Flip le tour où il a été Posé.", true]])]);
+      else A.push([c.p === "def" ? "Passer en ATK" : "Passer en DEF", rule(() => { c.p = c.p === "def" ? "atk" : "def"; c.pc = turnNo(); log(`${nm(c)} passe en ${c.p === "def" ? "DEF" : "ATK"}`); closeSheet(); commit(); },
+        [[!myTurn(), NOT_MINE], [!mainPhase(), NOT_MAIN], [fresh, "Changement de position : une fois par tour, et pas le tour où le monstre est arrivé sur le Terrain.", true]])]);
+      A.push(["Déclarer une attaque", rule(() => { c.atk = turnNo(); log(`${nm(c)} déclare une attaque`, "atk"); closeSheet(); commit(); },
+        [[!myTurn(), NOT_MINE], [!battlePhase(), "Les attaques se déclarent pendant ta Battle Phase (Combat)."], [turnNo() === 1, "Le premier joueur ne peut pas attaquer au 1er tour du Duel."],
+         [c.f === "down" || c.p === "def", "Seul un monstre en Position d'Attaque face recto peut attaquer."], [c.atk === turnNo(), "Ce monstre a déjà attaqué ce tour.", true]])]);
+      A.push(["Retourner (effet de carte)", () => { c.f = c.f === "down" ? "up" : "down"; if (c.f === "down") c.p = "def"; log(c.f === "up" ? `${nm(c)} est retourné face recto` : `Un monstre est retourné face verso`); closeSheet(); commit(); }]);
+    } else if (c.f === "down") {
+      const trapLike = k === "t" || sub === "q";
+      const checks = [[c.t === turnNo() && trapLike, k === "t" ? "Un Piège ne peut pas être activé le tour où il a été Posé." : "Une Magie Jeu-Rapide Posée ne s'active pas le tour où elle a été Posée.", true]];
+      if (k === "s" && sub !== "q") checks.unshift([!myTurn(), "Cette Magie ne s'active que pendant ton tour.", true], [!mainPhase(), NOT_MAIN, true]);
+      A.push(["Activer (retourner)", rule(() => { c.f = "up"; log(`Active ${nm(c)}`); closeSheet(); commit(); }, checks)]);
+    } else A.push(["Retourner face verso (effet)", () => { c.f = "down"; log(`Une carte est retournée face verso`); closeSheet(); commit(); }]);
     A.push(["Envoyer au Cimetière", to("gy")], ["Bannir", to("ban")], [isExtra(c.c) ? "Renvoyer à l'Extra Deck" : "Renvoyer en main", to("hand")], ["Au-dessus du Deck", to("deck", "", { top: true })], ["Mélanger dans le Deck", to("deck")]);
     A.push(["Déplacer", P(mon ? "me" : loc.z === "fz" ? "fz" : "s", { f: c.f, p: c.p }, "Déplacement")]);
     if (mon) A.push(["Attacher comme Matériel", P("attach", {}, "Attacher comme Matériel")]);
@@ -343,8 +410,9 @@ function actionsFor(loc) {
     const from = loc.z;
     if (from !== "extra") A.push(["Ajouter à la main", to("hand", from === "deck" ? "Ajoute à sa main depuis le Deck" : "")]);
     if (k === "m" || k === "x" || k === "tok") A.push(["Invocation Spéciale ATK", P("me", { f: "up", p: "atk" }, "Invocation Spéciale")], ["Invocation Spéciale DEF", P("me", { f: "up", p: "def" }, "Invocation Spéciale")]);
-    if (k === "s" || k === "t") A.push(["Placer en Zone Magie/Piège", P("s", { f: "up" }, "Placement")]);
-    if (k === "s") A.push(["Placer en Zone Terrain", P("fz", { f: "up" }, "Placement")]);
+    if (k === "m" && R && R.pend) A.push(["Placer en Zone Pendule", P("pz", { f: "up" }, "Placement")]);
+    if ((k === "s" && !isField) || k === "t") A.push(["Placer en Zone Magie/Piège", P("s", { f: "up" }, "Placement")]);
+    if (k === "s" && (isField || !R)) A.push(["Placer en Zone Terrain", P("fz", { f: "up" }, "Placement")]);
     if (from !== "gy") A.push(["Envoyer au Cimetière", to("gy")]);
     if (from !== "ban") A.push(["Bannir", to("ban")]);
     if (from !== "deck" && from !== "extra") A.push(["Au-dessus du Deck", to("deck", "", { top: true })], ["Mélanger dans le Deck", to("deck")]);
@@ -352,7 +420,15 @@ function actionsFor(loc) {
   return A;
 }
 function placeInto(z, i) {
-  const pl = S.placing; S.placing = null;
+  const pl = S.placing;
+  if (pl.target === "trib") {
+    const k = pl.picked.findIndex((p) => p.z === z && p.i === i);
+    if (k > -1) pl.picked.splice(k, 1); else pl.picked.push({ z, i });
+    if (pl.picked.length < pl.need) return render();
+    pl.picked.forEach((p) => move(p, { z: "gy" }, "Sacrifice"));
+    return startPlacing(pl.loc, pl.then.target, pl.then.opts, pl.then.label);
+  }
+  S.placing = null;
   if (pl.target === "attach") {
     const target = fieldAt(z, i), card = take(pl.loc);
     if (!card || !target) return commit();
@@ -367,6 +443,8 @@ function placeInto(z, i) {
 function validTarget(seat, z, i) {
   const pl = S.placing; if (!pl || seat !== S.seat || !S.mine) return false;
   const M = S.mine, occ = (zz, ii) => (zz === "fz" ? M.fz : M[zz][ii]);
+  if (pl.target === "trib") return (z === "m" || z === "e") && !!occ(z, i);
+  if (pl.target === "pz") return z === "s" && (i === 0 || i === 4) && !occ("s", i);
   if (pl.target === "attach") return (z === "m" || z === "e") && occ(z, i) && !(pl.loc.z === z && pl.loc.i === i);
   if (z === "e") return pl.target === "me" && !emzTaken(i);
   if (pl.target === "me") return z === "m" && !occ("m", i);
@@ -431,7 +509,8 @@ function sideData(seat) {
 function cell(seat, z, i, card, own, extraCls = "") {
   const sel = S.sheet && S.sheet.seat === seat && S.sheet.loc.z === z && S.sheet.loc.i === i;
   const tgt = validTarget(seat, z, i);
-  const cls = ["cell", extraCls, tgt ? "target" : "", sel ? "sel" : ""].filter(Boolean).join(" ");
+  const picked = S.placing && S.placing.target === "trib" && seat === S.seat && S.placing.picked.some((p) => p.z === z && p.i === i);
+  const cls = ["cell", extraCls, tgt ? "target" : "", sel || picked ? "sel" : ""].filter(Boolean).join(" ");
   const lbl = { m: "Monstre", s: "Mag/Piè", fz: "Terrain", e: "Extra" }[z];
   return `<div class="${cls}" tabindex="0" data-a="cell" data-seat="${seat}" data-z="${z}" data-i="${i}">${card ? cardHTML(card, { own }) : `<span class="lbl">${lbl}</span>`}</div>`;
 }
@@ -498,7 +577,7 @@ function viewTable() {
         ${lpBar(bottom, true)}
         ${seat && M ? `<div class="hand" aria-label="Ta main">${M.hand.length ? M.hand.map((c, i) => `<div style="position:relative" data-a="hand" data-i="${i}" tabindex="0">${cardHTML(c, { own: true })}</div>`).join("") : `<span class="muted" style="align-self:center">Main vide</span>`}</div>` : ""}
       </section>
-      ${seat && M && M.started ? `<div class="row-btns"><button data-a="draw">Piocher</button><button data-a="token">Créer un Jeton</button><button data-a="pile" data-seat="${seat}" data-z="deck">Deck…</button><button data-a="pile" data-seat="${seat}" data-z="extra">Extra Deck…</button>${S.placing ? `<button class="danger" data-a="cancelplace">Annuler le placement</button>` : ""}</div>` : ""}
+      ${seat && M && M.started ? `<div class="row-btns"><button data-a="draw">Piocher</button><button data-a="token">Créer un Jeton</button><button data-a="pile" data-seat="${seat}" data-z="deck">Deck…</button><button data-a="pile" data-seat="${seat}" data-z="extra">Extra Deck…</button>${S.placing && S.placing.target === "trib" ? `<button data-a="notrib">Sans Sacrifice (effet de carte)</button>` : ""}${S.placing ? `<button class="danger" data-a="cancelplace">Annuler le placement</button>` : ""}</div>` : ""}
     </div>
     <aside class="panel"><h2>Journal</h2><div class="log" id="log">${logs.length ? logs.map((e) => `<div class="e ${e.k === "chat" ? "chat" : ""}"><span class="w" style="color:${e.s === seat ? "var(--me)" : "var(--opp)"}">${esc(e.who)}</span><span>${esc(e.x)}</span></div>`).join("") : `<span class="muted">Les actions des deux joueurs s'afficheront ici.</span>`}</div>
       ${seat ? `<form class="chatform" data-a="chat"><input id="chatin" maxlength="200" placeholder="Message, ex. « j'active Cero en réponse »" aria-label="Message"><button>Envoyer</button></form>` : ""}</aside></div>`;
@@ -742,7 +821,8 @@ const ACT = {
   },
   act(el) { const a = S.sheet && S.sheet.acts[+el.dataset.k]; if (a) a[1](); },
   closesheet: closeSheet, closemodal: closeModal,
-  cancelplace() { const pl = S.placing; S.placing = null; if (pl && pl.loc.z === "hand" && (S.mine.hand[pl.loc.i] || {}).c === "token") S.mine.hand.splice(pl.loc.i, 1); render(); },
+  notrib() { const pl = S.placing; if (pl && pl.target === "trib") startPlacing(pl.loc, pl.then.target, pl.then.opts, pl.then.label); },
+  cancelplace() { const pl = S.placing; S.placing = null; if (pl && pl.target === "trib" && S.mine.ns === turnNo()) S.mine.ns = 0; if (pl && pl.loc.z === "hand" && (S.mine.hand[pl.loc.i] || {}).c === "token") S.mine.hand.splice(pl.loc.i, 1); render(); },
   draw: () => { draw(1); if (S.modal) renderModal(); },
   shuffle() { shuffle(S.mine.deck); log("Mélange son Deck"); commit(); renderModal(); },
   mill() { if (S.mine.deck.length) move({ z: "deck", i: 0 }, { z: "gy" }, "Envoie le dessus du Deck au Cimetière"); renderModal(); },
@@ -753,7 +833,9 @@ const ACT = {
   coin() { log(`Pile ou face : ${Math.random() < 0.5 ? "Pile" : "Face"}`); commit(); },
   dice() { log(`Lance un dé : ${1 + Math.floor(Math.random() * 6)}`); commit(); },
   phase() { const p = Math.min(5, (S.game.phase || 0) + 1); setGame({ phase: p }); log(`Passe en ${PH[p]}`); commit(); },
-  endturn() { const g = S.game; setGame({ turn: S.solo ? S.seat : other(S.seat), phase: 0, turnNo: (g.turnNo || 1) + 1 }); log("Termine son tour"); commit(); },
+  endturn() {
+    if (S.mine && S.mine.hand.length > 6 && !arm("endturn-hand")) return toast(`Tu as ${S.mine.hand.length} cartes en main : défausse jusqu'à 6 pendant la End Phase. Clique encore pour finir quand même.`);
+    const g = S.game; setGame({ turn: S.solo ? S.seat : other(S.seat), phase: 0, turnNo: (g.turnNo || 1) + 1 }); log("Termine son tour"); commit(); },
   taketurn() { setGame({ turn: S.seat, phase: 0 }); log("Prend la main sur le tour"); commit(); },
 };
 document.addEventListener("click", (e) => {
