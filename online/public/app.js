@@ -543,11 +543,13 @@ function viewDuel() {
   let turnPl = null, phase = 0, turnNo = 0;
   for (const e of S.log) { if (e.type === MSG.NEW_TURN) { turnPl = e.player; turnNo++; phase = 1; } if (e.type === MSG.NEW_PHASE) phase = PHASE_OF(e.phase); }
   const phaseIdx = PHASES.findIndex(([b]) => b === phase);
+  const turnInfoOf = () => `<div class="turn-mini"><strong>TOUR ${turnNo || 1}</strong><span>${esc(turnPl == null ? "" : pname(turnPl))}</span><em>${esc(phaseIdx >= 0 ? PHASES[phaseIdx][1].toUpperCase() : "")}</em></div>`;
 
   const player = (t, top) => `<div class="arena-player ${top ? "top-player" : "bottom-player"}">
     <div class="player-name"><span class="presence ${t === me ? "" : "rival"}"></span><strong>${esc(pname(t))}</strong>${turnPl === t ? `<i>SON TOUR</i>` : "<span></span>"}<small>${t === me ? (v.seat ? "TOI" : "JOUEUR") : "ADVERSAIRE"}</small></div>
     <div class="arena-lp" data-lp="${t}"><small>LIFE POINTS</small><strong>${F[t].lp.toLocaleString("fr-FR")}</strong><i><b style="width:${Math.max(0, Math.min(100, F[t].lp / 80))}%"></b></i></div>
-    <button class="banished" data-a="pile" data-c="${t}" data-w="ban">BANNIES <span>${F[t].ban.filter(Boolean).length}</span></button></div>`;
+    <button class="banished" data-a="pile" data-c="${t}" data-w="ban">BANNIES <span>${F[t].ban.filter(Boolean).length}</span></button>
+    <span class="hand-count">MAIN <b>${F[t].hand.filter(Boolean).length}</b></span>${top ? "" : `<div class="arena-turn">${turnInfoOf()}</div>`}</div>`;
 
   const board = `<div class="arena-panel" aria-label="Terrain">
     ${player(op, true)}
@@ -563,19 +565,29 @@ function viewDuel() {
     <div class="table-hand player-cards" aria-label="Ta main">${hand || `<span class="muted small">Main vide</span>`}</div>
   </div>`;
 
-  const sidebar = `<aside class="game-sidebar">
+  // Tiroir de gauche : tour et phases, chaîne, journal et chat. Fermé par défaut pour garder le terrain en entier sous les yeux.
+  const feed = S.log.slice(-150).map((e) => logLine(e, me, pname)).filter(Boolean);
+  const unread = Math.max(0, S.log.length - (S.seenLog || 0));
+  if (S.drawer) S.seenLog = S.log.length;
+  const turnInfo = turnInfoOf();
+  const sidebar = `<aside class="game-drawer ${S.drawer ? "open" : ""}" aria-label="Journal du duel" ${S.drawer ? "" : "inert"}>
     <div class="side-card turn-card">
-      <div class="turn-heading"><div><strong>TOUR ${turnNo || 1}</strong> <span>· ${esc(turnPl == null ? "" : pname(turnPl))}</span></div>${v.seat && !d.ended ? `<button class="side-ghost danger-action" data-a="surrender">${S.armed === "surrender" ? "CONFIRMER ?" : "ABANDONNER"}</button>` : ""}</div>
+      <div class="turn-heading"><div><strong>TOUR ${turnNo || 1}</strong> <span>· ${esc(turnPl == null ? "" : pname(turnPl))}</span></div><button class="side-ghost" data-a="drawer" aria-label="Fermer le journal">${icon("x", 14)}</button></div>
       <div class="horizontal-phases">${PHASES.map(([b, n], i) => `<span class="${i === phaseIdx ? "active" : i < phaseIdx ? "done" : ""}">${n.toUpperCase()}</span>`).join("")}</div>
-      ${d.chain && d.chain.length ? `<div class="chain-preview"><span>CHAÎNE :</span>${d.chain.map((c) => `<div class="chain-card">${thumb(c.code)}</div>`).join("")}</div>` : ""}
+      ${v.seat && !d.ended ? `<button class="side-ghost danger-action" data-a="surrender">${S.armed === "surrender" ? "CONFIRMER L'ABANDON ?" : "ABANDONNER"}</button>` : ""}
     </div>
-    ${d.ended ? viewEnd(d, me, pname) : ""}
     <div class="side-card journal-card"><div class="journal-heading"><strong>JOURNAL DU DUEL</strong><span>EN DIRECT</span></div>
-      <div class="journal-feed" id="log">${S.log.slice(-150).map((e) => logLine(e, me, pname)).filter(Boolean).join("")}</div>
+      <div class="journal-feed" id="log">${feed.join("")}</div>
       ${(v.chat || []).slice(-6).map((c) => `<div class="chat-line"><b style="color:${v.teams[c.seat] === me ? "var(--green)" : "#dd6965"}">${esc(v.players[c.seat] ? v.players[c.seat].name : c.seat)}</b> ${esc(c.t)}</div>`).join("")}
-      ${v.seat ? `<form class="chat-entry" data-a="chat"><input id="chatin" maxlength="200" placeholder="Message à ton adversaire…" aria-label="Message"><button>ENVOYER</button></form>` : ""}
+      ${v.seat && !(v.players.B && v.players.B.bot) ? `<form class="chat-entry" data-a="chat"><input id="chatin" maxlength="200" placeholder="Message à ton adversaire…" aria-label="Message"><button>ENVOYER</button></form>` : ""}
     </div>
-  </aside>`;
+  </aside>
+  <nav class="game-rail" aria-label="Outils du duel">
+    <button class="rail-btn ${S.drawer ? "on" : ""}" data-a="drawer" aria-label="Journal du duel" aria-expanded="${!!S.drawer}">${icon("cards", 18)}<span>JOURNAL</span>${unread && !S.drawer ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}</button>
+    <button class="rail-btn" data-a="leave" aria-label="Quitter vers l'accueil">${icon("chevron", 18)}<span>ACCUEIL</span></button>
+  </nav>`;
+  const lastLine = feed.length ? feed[feed.length - 1] : "";
+  const chainStrip = d.chain && d.chain.length ? `<div class="chain-float" aria-label="Chaîne en cours"><span>CHAÎNE</span>${d.chain.map((c, i) => `<div class="chain-card" title="Maillon ${i + 1}">${thumb(c.code)}</div>`).join("")}</div>` : "";
 
   // Les interactions s'ouvrent par-dessus le terrain : barre fixe en bas pour les commandes, pop-up pour le reste
   const DOCK = new Set([MSG.SELECT_IDLECMD, MSG.SELECT_BATTLECMD, MSG.SELECT_PLACE, MSG.SELECT_DISFIELD]);
@@ -584,12 +596,19 @@ function viewDuel() {
   const busyCard = `<div class="side-card prompt-card wait"><div class="prompt-head"><div class="waiting-icon spin">${icon("clock", 20)}</div><div><strong>Le moteur résout…</strong><p>Ton choix est envoyé.</p></div></div></div>`;
   const dock = d.ended ? "" : `<div class="duel-dock">${S.busy ? busyCard : inPopup ? `<div class="side-card prompt-card"><div class="prompt-head"><div class="waiting-icon">${icon("spark", 20)}</div><div><strong>Une décision t'attend</strong><p>${S.mini ? "Regarde le terrain, puis reprends ta décision." : "Réponds dans la fenêtre ouverte."}</p></div></div>${S.mini ? `<div class="btns"><button class="next-phase" data-a="unmini">REPRENDRE MA DÉCISION ${icon("chevron", 15)}</button></div>` : ""}</div>` : promptHTML}</div>`;
   const popup = inPopup && !S.mini ? `<div class="overlay" role="dialog" aria-modal="true"><div class="popup" data-a="noop"><button class="mini-btn" data-a="mini">${icon("chevron", 15)} VOIR LE TERRAIN</button>${promptHTML}</div></div>`
-    : S.focus ? `<div class="overlay" data-a="unfocus" role="dialog" aria-modal="true"><div class="popup" data-a="noop">${viewFocus(acts)}</div></div>` : "";
-  return `<section class="yod-game">
+    : S.focus ? `<div class="overlay" data-a="unfocus" role="dialog" aria-modal="true"><div class="popup" data-a="noop">${viewFocus(acts)}</div></div>`
+    : d.ended && !S.endSeen ? `<div class="overlay" data-a="endseen" role="dialog" aria-modal="true"><div class="popup" data-a="noop">${viewEnd(d, me, pname)}</div></div>` : "";
+  const portrait = window.matchMedia("(orientation: portrait) and (max-width: 760px)").matches && !S.portraitOk;
+  return `<section class="yod-game ${S.drawer ? "drawer-open" : ""}">
     <header class="game-header"><button class="back-lobby" data-a="leave">${icon("chevron", 16)}ACCUEIL</button>
-      <div class="room-identity"><small>SALLE PRIVÉE</small><strong>${esc(v.code)}</strong></div>${v.seat ? "" : `<span class="spectator">SPECTATEUR</span>`}
+      <div class="room-identity"><small>SALLE</small><strong>${esc(v.code)}</strong></div>${v.seat ? "" : `<span class="spectator">SPECTATEUR</span>`}
+      ${turnInfo}
+      <div class="header-ticker" aria-live="polite">${lastLine}</div>
+      ${d.ended ? `<button class="side-ghost" data-a="endshow">RÉSULTAT</button>` : ""}
       ${v.players.B && v.players.B.bot ? "" : `<button class="invite-code" data-a="copycode">${icon("copy", 15)}COPIER LE LIEN</button>`}</header>
-    <div class="game-layout">${board}${sidebar}</div>${dock}${popup}</section>`;
+    <div class="game-layout">${sidebar}<div class="arena-wrap">${board}${chainStrip}</div>${dock}</div>${popup}
+    ${portrait ? `<div class="rotate-hint" role="dialog" aria-modal="true"><div><div class="rotate-icon">${icon("cards", 34)}</div><strong>TOURNE TON TÉLÉPHONE</strong><p>Le duel se joue en paysage : tout le terrain tient sur l'écran, sans faire défiler.</p>
+      <button class="primary-action" data-a="landscape">PLEIN ÉCRAN EN PAYSAGE</button><button class="ghost-action" data-a="portraitok">Jouer quand même en portrait</button></div></div>` : ""}</section>`;
 }
 
 function viewEnd(d, me, pname) {
@@ -898,6 +917,15 @@ const ACT = {
   leave() { leave(); },
   copylink() { copy($("#rlink").value, $("#rlink")); },
   copycode() { copy(location.origin + "/?salle=" + S.code); },
+  drawer() { S.drawer = !S.drawer; render(); if (S.drawer) { const lg = $("#log"); if (lg) lg.scrollTop = lg.scrollHeight; } },
+  endseen() { S.endSeen = true; render(); },
+  endshow() { S.endSeen = false; render(); },
+  portraitok() { S.portraitOk = true; render(); },
+  async landscape() {
+    try { if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen({ navigationUI: "hide" }); } catch (e) {}
+    try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape"); } catch (e) { toast("Tourne ton téléphone à l'horizontale."); }
+    render();
+  },
   botpick() { S.botPick = true; loadBots(); render(); setTimeout(() => { const f = $("#botsearch"); if (f) f.focus(); }, 0); },
   closebot() { S.botPick = false; render(); },
   async vsbot(el) {
@@ -991,7 +1019,7 @@ const ACT = {
   pickattr(el) { const b = +el.dataset.b, k = S.picks.indexOf(b); if (k > -1) S.picks.splice(k, 1); else S.picks.push(b); render(); },
   confirmattr() { send({ type: RESP.ANNOUNCE_ATTRIB, attributes: S.picks }); },
   async surrender() { if (!arm("surrender")) return; try { await api({ action: "surrender", code: S.code, token: S.token }); await refresh(); } catch (e) { toast(e.message); } },
-  async rematch() { try { await api({ action: "rematch", code: S.code, token: S.token }); S.log = []; S.logEnd = 0; await refresh(true); } catch (e) { toast(e.message); } },
+  async rematch() { try { await api({ action: "rematch", code: S.code, token: S.token }); S.log = []; S.logEnd = 0; S.endSeen = false; S.seenLog = 0; await refresh(true); } catch (e) { toast(e.message); } },
   closepile() { const b = $("#pilebox"); if (b) b.remove(); },
 };
 function showPile(list, c, l, acts) {
@@ -1019,7 +1047,7 @@ document.addEventListener("click", (e) => {
   const f = ACT[el.dataset.a]; if (f) { e.preventDefault(); f(el); }
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { if ($("#pilebox")) ACT.closepile(); else if (S.focus) ACT.unfocus(); else if (S.botPick) ACT.closebot(); }
+  if (e.key === "Escape") { if ($("#pilebox")) ACT.closepile(); else if (S.focus) ACT.unfocus(); else if (S.botPick) ACT.closebot(); else if (S.drawer) ACT.drawer(); }
   if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[tabindex]") && e.target.tagName !== "INPUT") { e.preventDefault(); e.target.click(); }
 });
 document.addEventListener("submit", async (e) => {
@@ -1049,6 +1077,8 @@ const standalone = () => window.matchMedia("(display-mode: standalone)").matches
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; render(); });
 window.addEventListener("appinstalled", () => { installEvt = null; toast("Your Own Duel est installé sur ton appareil"); render(); });
+// passage portrait ↔ paysage : on recalcule l'écran du duel
+window.matchMedia("(orientation: portrait)").addEventListener?.("change", () => { if (S.code && S.view && S.view.status !== "lobby") render(); });
 if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
 const installButton = () => (standalone() ? "" : installEvt || isIOS ? `<button class="install-btn" data-a="install">${icon("plus", 15)}Installer l'appli</button>` : "");
 ACT.install = async () => {
