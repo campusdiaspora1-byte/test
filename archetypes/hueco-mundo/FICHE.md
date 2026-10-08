@@ -81,6 +81,10 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR020 | Fracciones - Garde Servile de l'Espada | Monstre à Effet, Niv. 4, 1200/1000 | Terminée |
 | HMUN-FR021 | Laboratoire de l'Octava Espada - Modification Organique | Magie Continue | Terminée |
 | HMUN-FR022 | Szayel Aporro Granz - Le Huitième Espada | Monstre Union/Effet, Niv. 1, 500/1000 | Terminée |
+| HMUN-FR023 | Ira - La Rage de l'Espada Cero | Magie Jeu-Rapide | Texte validé · visuel à venir |
+| HMUN-FR024 | Santa Teresa - Le Hierro de la Quinta Espada | Piège Normal | Texte validé · visuel à venir |
+| HMUN-FR025 | Amor - La Possession de la Séptima Espada | Piège Normal | Texte validé · visuel à venir |
+| HMUN-FR026 | Glotonería - Le Festin de la Novena Espada | Magie Normale | Texte validé · visuel à venir |
 | HMUN-FR013 | Lilynette Gingerbuck - La Fracción du Premier Espada | Monstre à Effet, Niv. 4, 1000/1000 | Terminée (visuel basse résolution, 288×432) |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
@@ -160,6 +164,16 @@ Magie Continue « Espada » : FR001 peut la chercher. Change le Type de tout le 
 Conseil : déclarer Démon, pour garder le bonus de Las Noches et le verrou Démon de FR018.
 Szayel (FR022, Union Niv. 1) cherche le Laboratoire et s'équipe à un de vos monstres, qui devient « Espada » et est
 protégé une fois de la destruction. Son nom contient « Espada » : FR001 (via Las Noches FR002) et FR020 peuvent le chercher.
+
+### Les autres Espada en Magies/Pièges
+Leur nom contient « Espada » : FR001 (Ulquiorra) peut les chercher.
+- FR023 Ira (Yammy, n°10 / n°0) : change de numéro dans le manga ; la carte fait ignorer, pour un tour, la règle
+  « Las Noches au Cimetière » des Espada n°4 à n°0, ou donne de la rage (+500 ATK par « Espada » au Cimetière).
+- FR024 Santa Teresa (Nnoitra, n°5) : Hierro le plus dur, combattant acharné ; protection totale + 2e attaque.
+- FR025 Amor (Zommari, n°7) : prend le contrôle des corps marqués ; vole un monstre pour un tour, traité comme « Espada »
+  (utilisable comme Matériel de Los Lobos ou Tiburón).
+- FR026 Glotonería (Aaroniero, n°9) : dévore les Hollows et copie leurs pouvoirs ; bannit un monstre d'un Cimetière,
+  prend la moitié de son ATK et son nom.
 
 ## Points de vigilance (équilibrage)
 
