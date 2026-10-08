@@ -78,7 +78,7 @@ export async function setDeck(code, token, deck) {
   const { main, extra, problems } = checkDeck(deck);
   if (problems.length) fail(400, problems.join(" "));
   d.players[seat].deck = { main, extra, name: String(deck.name || "Deck").slice(0, 40) };
-  if (d.players.A && d.players.A.deck && d.players.B && d.players.B.deck) startDuel(d);
+  if (d.players.A && d.players.A.deck && d.players.B && d.players.B.deck) { startDuel(d); await settle(d, await replay(d.game)); }
   await save(code, room);
   return { ok: true };
 }
@@ -92,6 +92,19 @@ function startDuel(d) {
   d.status = "duel";
 }
 
+// Comme EDOPro : quand un joueur ne peut rien chaîner, on passe pour lui sans attendre son navigateur
+const nothingToChain = (p) => p && p.type === 16 /* SELECT_CHAIN */ && !p.selects.length && !p.forced;
+async function settle(d, r) {
+  for (let i = 0; i < 50 && nothingToChain(r.pending); i++) {
+    const team = r.pending.player;
+    r.close();
+    d.game.responses.push({ team, r: { type: 8, index: null } });
+    r = await replay(d.game);
+  }
+  if (r.ended) { d.status = "ended"; d.game.winner = r.winner; }
+  r.close();
+}
+
 export async function respond(code, token, response) {
   code = String(code || "").toUpperCase();
   const room = await load(code), d = room.data, seat = seatOf(room, token);
@@ -100,8 +113,7 @@ export async function respond(code, token, response) {
   const r = await replay(d.game, { team, r: response });
   if (!r.accepted) fail(400, "Le moteur refuse ce choix.");
   d.game.responses.push({ team, r: response });
-  if (r.ended) { d.status = "ended"; d.game.winner = r.winner; }
-  r.close();
+  await settle(d, r);
   return { version: await save(code, room) };
 }
 
@@ -133,9 +145,10 @@ export async function chat(code, token, text) {
 }
 
 /** Ce que le joueur `token` voit de la salle (ou un spectateur sans token). */
-export async function roomView(code, token, from = 0) {
+export async function roomView(code, token, from = 0, knownVersion = 0) {
   code = String(code || "").toUpperCase();
   const room = await load(code), d = room.data;
+  if (knownVersion && knownVersion === room.version) return { code, version: room.version, same: true }; // rien de neuf : pas de relecture
   const seat = SEATS.find((s) => token && d.players[s] && d.players[s].token === token) || null;
   const players = Object.fromEntries(SEATS.map((s) => [s, d.players[s] ? { name: d.players[s].name, ready: !!d.players[s].deck, deckName: d.players[s].deck && d.players[s].deck.name } : null]));
   const out = { code, version: room.version, status: d.status, seat, players, chat: d.chat || [] };

@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     let out;
     if (req.method === "GET") {
       const u = new URL(req.url, "http://x");
-      out = await roomView(u.searchParams.get("code"), u.searchParams.get("token"), +(u.searchParams.get("from") || 0));
+      out = await roomView(u.searchParams.get("code"), u.searchParams.get("token"), +(u.searchParams.get("from") || 0), +(u.searchParams.get("v") || 0));
     } else if (req.method === "POST") {
       const b = await readBody(req);
       switch (b.action) {
