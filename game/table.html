@@ -398,9 +398,11 @@ function viewLobby() {
     : S.readOnly ? `<div class="banner">Tu peux regarder les parties, mais pas jouer : le propriétaire de l'arène doit t'inviter comme <b>Éditeur</b> depuis le menu Partager.</div>` : "";
   const games = S.games.map((g) => {
     const seat = (s) => { const n = g.players && g.players[s]; return n ? `<span class="chip">${esc(n)}</span>` : `<button data-a="join" data-g="${esc(g.id)}" data-s="${s}" ${S.readOnly ? "disabled" : ""}>Prendre la place ${s === "A" ? 1 : 2}</button>`; };
-    const mineIn = g.players && Object.keys(g.players).find((s) => g.holders && g.holders[s] === S.holder);
+    // Places tenues par ce compte (les deux si on joue les deux places avec le même compte, sur deux appareils)
+    const mine = ["A", "B"].filter((s) => g.players && g.players[s] && g.holders && g.holders[s] === S.holder);
+    const back = mine.map((s) => `<button class="${mine.length === 1 || s === store.get("seat-" + g.id) ? "primary" : ""}" data-a="join" data-g="${esc(g.id)}" data-s="${s}">${mine.length > 1 ? `Revenir place ${s === "A" ? 1 : 2}` : "Revenir"}</button>`).join("");
     return `<div class="game"><div><div class="nm">${esc(g.name || "Partie")}</div><div class="muted">${g.players && (g.players.A || g.players.B) ? "Tour " + (g.turnNo || 1) : "En attente de joueurs"}</div></div>
-      <div class="row-btns">${mineIn ? `<button class="primary" data-a="join" data-g="${esc(g.id)}" data-s="${mineIn}">Revenir</button>` : ""}<button data-a="watch" data-g="${esc(g.id)}">Regarder</button>
+      <div class="row-btns">${back}<button data-a="watch" data-g="${esc(g.id)}">Regarder</button>
       <button class="danger" data-a="delgame" data-g="${esc(g.id)}">${S.armed === "del-" + g.id ? "Confirmer ?" : "Supprimer"}</button></div>
       <div class="seatline">${seat("A")}${seat("B")}</div></div>`;
   }).join("");
@@ -608,7 +610,13 @@ function renderModal() {
 }
 
 /* ---------- rendu ---------- */
+let pressing = 0, renderLater = false;
+const release = () => setTimeout(() => { pressing = 0; if (renderLater) { renderLater = false; render(); } }, 0);
+document.addEventListener("pointerdown", () => { pressing = Date.now(); setTimeout(() => { if (pressing && Date.now() - pressing >= 1000) release(); }, 1000); }, true);
+document.addEventListener("pointerup", release, true);
+document.addEventListener("pointercancel", release, true);
 function render() {
+  if (pressing) { renderLater = true; return; }
   const app = $("#app"), logEl = $("#log"), atBottom = logEl ? logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 30 : true;
   const focus = document.activeElement && document.activeElement.id, val = focus && document.activeElement.value;
   app.innerHTML = S.view === "table" ? viewTable() : S.view === "decks" ? viewDecks() : viewLobby();
@@ -636,12 +644,18 @@ async function openGame(gid, seat) {
     render();
   }, dbError));
   if (seat) {
+    store.set("seat-" + gid, seat);
     S.pubW = writer(db.doc(`games/${gid}/seats/${seat}`));
     let saved = null;
     if (S.uid) {
-      const pref = db.collection("data/users/" + S.uid).doc("g-" + gid);
+      // Une sauvegarde par place : le même compte peut tenir les deux places sur deux appareils
+      const col = db.collection("data/users/" + S.uid), pref = col.doc(`g-${gid}-${seat}`);
       S.privW = writer(pref);
-      try { const s = await pref.get(); if (s.exists && s.data().seat === seat) saved = s.data().side; } catch (e) {}
+      try {
+        const s = await pref.get();
+        if (s.exists) saved = s.data().side;
+        else { const old = await col.doc("g-" + gid).get(); if (old.exists && old.data().seat === seat) saved = old.data().side; }
+      } catch (e) {}
     }
     saved = saved || store.get(privKey());
     S.mine = saved || freshSide();
