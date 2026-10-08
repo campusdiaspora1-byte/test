@@ -1,0 +1,462 @@
+[
+ {
+  "code": 711000001,
+  "alias": 0,
+  "setcodes": [
+   3952,
+   3954
+  ],
+  "type": 33,
+  "level": 4,
+  "attribute": 32,
+  "race": 8,
+  "attack": 1800,
+  "defense": 1200,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Ulquiorra Cifer - Le Quatrième Espada"
+ },
+ {
+  "code": 711000002,
+  "alias": 0,
+  "setcodes": [
+   3953
+  ],
+  "type": 524290,
+  "level": 0,
+  "attribute": 0,
+  "race": 0,
+  "attack": 0,
+  "defense": 0,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Las Noches - Palais du Hueco Mundo"
+ },
+ {
+  "code": 711000003,
+  "alias": 0,
+  "setcodes": [
+   3955
+  ],
+  "type": 65538,
+  "level": 0,
+  "attribute": 0,
+  "race": 0,
+  "attack": 0,
+  "defense": 0,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Cero Oscuras - Le Cero Noir du Désespoir"
+ },
+ {
+  "code": 711000004,
+  "alias": 0,
+  "setcodes": [
+   3954
+  ],
+  "type": 33554465,
+  "level": 10,
+  "attribute": 32,
+  "race": 8,
+  "attack": 3500,
+  "defense": 3000,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Ulquiorra Cifer - Segunda Etapa"
+ },
+ {
+  "code": 711000005,
+  "alias": 0,
+  "setcodes": [
+   3956
+  ],
+  "type": 33,
+  "level": 3,
+  "attribute": 32,
+  "race": 8,
+  "attack": 1000,
+  "defense": 1000,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Fracciones - Tir d'Interception"
+ },
+ {
+  "code": 711000006,
+  "alias": 0,
+  "setcodes": [
+   3954
+  ],
+  "type": 33554465,
+  "level": 8,
+  "attribute": 32,
+  "race": 8,
+  "attack": 2800,
+  "defense": 2200,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Ulquiorra Cifer - Murciélago"
+ },
+ {
+  "code": 711000007,
+  "alias": 0,
+  "setcodes": [],
+  "type": 65538,
+  "level": 0,
+  "attribute": 0,
+  "race": 0,
+  "attack": 0,
+  "defense": 0,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Encadénate, Murciélago !"
+ },
+ {
+  "code": 711000008,
+  "alias": 0,
+  "setcodes": [],
+  "type": 131076,
+  "level": 0,
+  "attribute": 0,
+  "race": 0,
+  "attack": 0,
+  "defense": 0,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Dominance du Vasto Lorde"
+ },
+ {
+  "code": 711000009,
+  "alias": 0,
+  "setcodes": [
+   3952,
+   3958
+  ],
+  "type": 4129,
+  "level": 4,
+  "attribute": 32,
+  "race": 8,
+  "attack": 1900,
+  "defense": 1000,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Grimmjow Jaegerjaquez - Le Sixième Espada"
+ },
+ {
+  "code": 711000010,
+  "alias": 0,
+  "setcodes": [
+   3958
+  ],
+  "type": 8225,
+  "level": 8,
+  "attribute": 32,
+  "race": 8,
+  "attack": 3000,
+  "defense": 2000,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Grimmjow Jaegerjaquez - Pantera"
+ },
+ {
+  "code": 711000011,
+  "alias": 0,
+  "setcodes": [
+   3952,
+   3957
+  ],
+  "type": 33,
+  "level": 4,
+  "attribute": 32,
+  "race": 8,
+  "attack": 1700,
+  "defense": 1500,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Coyote Starrk - Le Premier Espada"
+ },
+ {
+  "code": 711000012,
+  "alias": 0,
+  "setcodes": [
+   3957
+  ],
+  "type": 8388641,
+  "level": 4,
+  "attribute": 32,
+  "race": 8,
+  "attack": 2800,
+  "defense": 2000,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Coyote Starrk - Los Lobos"
+ },
+ {
+  "code": 711000013,
+  "alias": 0,
+  "setcodes": [
+   3952,
+   3961
+  ],
+  "type": 33,
+  "level": 4,
+  "attribute": 32,
+  "race": 8,
+  "attack": 1000,
+  "defense": 1000,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Lilynette Gingerbuck - La Fracción du Premier Espada"
+ },
+ {
+  "code": 711000014,
+  "alias": 0,
+  "setcodes": [
+   3952,
+   3959
+  ],
+  "type": 33,
+  "level": 7,
+  "attribute": 32,
+  "race": 8,
+  "attack": 2600,
+  "defense": 2000,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Barragán Luisenbarn - Le Second Espada"
+ },
+ {
+  "code": 711000015,
+  "alias": 0,
+  "setcodes": [
+   3959
+  ],
+  "type": 97,
+  "level": 9,
+  "attribute": 32,
+  "race": 8,
+  "attack": 3200,
+  "defense": 2500,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Barragán Luisenbarn - Arrogante"
+ },
+ {
+  "code": 711000016,
+  "alias": 0,
+  "setcodes": [
+   3952,
+   3960
+  ],
+  "type": 33,
+  "level": 5,
+  "attribute": 2,
+  "race": 8,
+  "attack": 2100,
+  "defense": 1400,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Tier Harribel - La Troisième Espada"
+ },
+ {
+  "code": 711000017,
+  "alias": 0,
+  "setcodes": [
+   3960
+  ],
+  "type": 67108897,
+  "level": 3,
+  "attribute": 2,
+  "race": 8,
+  "attack": 2700,
+  "defense": 7,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 7,
+  "name": "Tier Harribel - Tiburón"
+ },
+ {
+  "code": 711000018,
+  "alias": 0,
+  "setcodes": [
+   3956,
+   3963
+  ],
+  "type": 33,
+  "level": 4,
+  "attribute": 2,
+  "race": 8,
+  "attack": 1500,
+  "defense": 1500,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Las Tres Bestias - Fracciones de la Chimère"
+ },
+ {
+  "code": 711000019,
+  "alias": 0,
+  "setcodes": [],
+  "type": 97,
+  "level": 8,
+  "attribute": 32,
+  "race": 8,
+  "attack": 3000,
+  "defense": 0,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Ayon - Monstre de la Calamité"
+ },
+ {
+  "code": 711000020,
+  "alias": 0,
+  "setcodes": [
+   3952,
+   3956
+  ],
+  "type": 33,
+  "level": 4,
+  "attribute": 32,
+  "race": 8,
+  "attack": 1200,
+  "defense": 1000,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Fracciones - Garde Servile de l'Espada"
+ },
+ {
+  "code": 711000021,
+  "alias": 0,
+  "setcodes": [
+   3952
+  ],
+  "type": 131074,
+  "level": 0,
+  "attribute": 0,
+  "race": 0,
+  "attack": 0,
+  "defense": 0,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Laboratoire de l'Octava Espada - Modification Organique"
+ },
+ {
+  "code": 711000022,
+  "alias": 0,
+  "setcodes": [
+   3952
+  ],
+  "type": 1057,
+  "level": 1,
+  "attribute": 32,
+  "race": 8,
+  "attack": 500,
+  "defense": 1000,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Szayel Aporro Granz - Le Huitième Espada"
+ },
+ {
+  "code": 711000023,
+  "alias": 0,
+  "setcodes": [
+   3952,
+   3955
+  ],
+  "type": 65538,
+  "level": 0,
+  "attribute": 0,
+  "race": 0,
+  "attack": 0,
+  "defense": 0,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Ira - La Rage de l'Espada Cero"
+ },
+ {
+  "code": 711000024,
+  "alias": 0,
+  "setcodes": [
+   3952
+  ],
+  "type": 4,
+  "level": 0,
+  "attribute": 0,
+  "race": 0,
+  "attack": 0,
+  "defense": 0,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Santa Teresa - Le Hierro de la Quinta Espada"
+ },
+ {
+  "code": 711000025,
+  "alias": 0,
+  "setcodes": [
+   3952
+  ],
+  "type": 4,
+  "level": 0,
+  "attribute": 0,
+  "race": 0,
+  "attack": 0,
+  "defense": 0,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Amor - La Possession de la Séptima Espada"
+ },
+ {
+  "code": 711000026,
+  "alias": 0,
+  "setcodes": [
+   3952
+  ],
+  "type": 2,
+  "level": 0,
+  "attribute": 0,
+  "race": 0,
+  "attack": 0,
+  "defense": 0,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Glotonería - Le Festin de la Novena Espada"
+ },
+ {
+  "code": 711000027,
+  "alias": 0,
+  "setcodes": [],
+  "type": 16401,
+  "level": 1,
+  "attribute": 2,
+  "race": 64,
+  "attack": 500,
+  "defense": 500,
+  "lscale": 0,
+  "rscale": 0,
+  "link_marker": 0,
+  "name": "Jeton Fracción"
+ }
+]

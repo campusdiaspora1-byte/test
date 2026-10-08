@@ -1,0 +1,1 @@
+{ "name": "hueco-mundo-edopro-tests", "private": true, "type": "module", "scripts": { "test": "node run.mjs" }, "dependencies": { "ocgcore-wasm": "0.1.2" } }

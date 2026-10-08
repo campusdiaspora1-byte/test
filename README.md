@@ -38,3 +38,7 @@ leurs cartes et appliquent les effets ensemble. La main, le Deck et l'Extra Deck
 - Base officielle : `python3 tools/build_official.py fr-FR/cards.cdb en-US/cards.cdb`, à partir de
   [mycard/ygopro-database](https://github.com/mycard/ygopro-database) (fichiers `locales/*/cards.cdb`).
 - Pour mettre à jour les cartes de l'arène après un nouvel archétype : `python3 tools/build_game.py archetypes/<dossier>`.
+
+## Extension EDOPro (effets automatiques)
+
+`edopro/hueco-mundo-edopro.zip` contient l'archétype prêt pour [EDOPro](https://projectignis.github.io/download.html) : base de cartes, un script Lua par carte et les illustrations. Le moteur applique lui-même les déclencheurs, les conditions et les coûts. Installation et règles de salle : [edopro/README.md](edopro/README.md).
