@@ -33,6 +33,7 @@ const DEMO = { id: "demo", name: "Hueco Mundo · démo", main: [1, 1, 1, 6, 6, 6
 const S = {
   name: store.get("name", ""), decks: store.get("decks", []), deckSel: store.get("deck-sel", "demo"),
   code: null, token: null, view: null, version: 0, log: [], logEnd: 0, busy: false, picks: [], focus: null, editing: null, search: "", announce: "",
+  tab: "play", selCard: null, rooms: store.get("rooms", []),
 };
 const TEXT = {}, CHUNK = {};
 let STR = { system: {} }, INDEX = null;
@@ -52,6 +53,8 @@ function text(code) {
   }).catch(() => {});
   return null;
 }
+// Textes système d'EDOPro avec emplacements : %ls (texte), %d (nombre), remplis dans l'ordre
+const fill = (t, args) => { let i = 0; return String(t).replace(/%ls|%d|%s/g, () => (i < args.length ? args[i++] : "")); };
 const cname = (code) => (code ? (text(code) || { name: "…" }).name : "une carte face verso");
 const sys = (n) => (STR.system && STR.system[n]) || `#${n}`;
 function desc(d) {
@@ -144,6 +147,7 @@ function listen() {
 }
 function enter(code, token) {
   S.code = code; S.token = token; S.view = null; S.version = 0; S.log = []; S.logEnd = 0; S.picks = []; S.focus = null;
+  S.rooms = [{ code, at: Date.now() }, ...S.rooms.filter((r) => r.code !== code)].slice(0, 12); store.set("rooms", S.rooms);
   history.replaceState(null, "", "/?salle=" + code);
   listen(); refresh(true); render();
 }
@@ -189,71 +193,168 @@ async function loadIndex() {
 }
 const norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-/* ---------- vues ---------- */
+/* ---------- icônes (design Figma) ---------- */
+const ICONS = {
+  cards: `<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h3M4 6H3a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h9"/>`,
+  chevron: `<path d="m9 18 6-6-6-6"/>`,
+  copy: `<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>`,
+  edit: `<path d="m4 20 4.3-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m14 7 3 3"/>`,
+  plus: `<path d="M12 5v14M5 12h14"/>`,
+  search: `<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>`,
+  shield: `<path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10Z"/>`,
+  spark: `<path d="m12 2 1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2Z"/>`,
+  swords: `<path d="m14.5 5.5 4-3 3 3-3 4M13 7l4 4M8 16l-4.5 4.5M3 14l7 7M9.5 5.5l-4-3-3 3 3 4M11 7l-8 8M16 16l4.5 4.5M21 14l-7 7"/>`,
+  users: `<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>`,
+  x: `<path d="m6 6 12 12M18 6 6 18"/>`,
+  clock: `<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>`,
+};
+const icon = (n, size = 20) => `<svg aria-hidden="true" class="icon" width="${size}" height="${size}" viewBox="0 0 24 24">${ICONS[n]}</svg>`;
+const initials = (n) => (String(n || "?").trim().split(/\s+/).map((w) => w[0]).join("").slice(0, 2) || "?").toUpperCase();
+const logo = () => `<div class="brand"><div class="brand-symbol">${icon("swords", 25)}</div><div><div class="brand-name">YOUR OWN <span>DUEL</span></div><div class="brand-tagline">BUILD · CHALLENGE · CONQUER</div></div></div>`;
+const thumb = (code, cls = "") => `<div class="card ${cls}">${face(code)}</div>`;
+
+/* ---------- rendu ---------- */
 function render() {
   const app = $("#app");
   const focus = document.activeElement && document.activeElement.id, val = focus && document.activeElement.value, selStart = focus && document.activeElement.selectionStart;
-  app.innerHTML = !S.code ? viewHome() : !S.view ? `<p class="muted">Connexion à la salle ${esc(S.code)}…</p>` : S.view.status === "lobby" ? viewRoom() : viewDuel();
+  let html;
+  if (S.code && S.view && S.view.status !== "lobby") html = viewDuel();
+  else html = `<main class="app-shell"><div class="ambient-grid"></div>${topbar()}${S.code ? (S.view ? viewPrep() : `<div class="prep"><div class="loader-content">${emblem()}<div class="loader-title">CONNEXION…</div><p>Salle ${esc(S.code)}</p></div></div>`) : S.tab === "decks" ? viewDecks() : S.tab === "rooms" ? viewRooms() : viewPlay()}</main>`;
+  app.innerHTML = html;
   if (focus) { const f = document.getElementById(focus); if (f) { f.focus(); if (val != null && f.value !== val) f.value = val; try { f.setSelectionRange(selStart, selStart); } catch (e) {} } }
   const lg = $("#log"); if (lg) lg.scrollTop = lg.scrollHeight;
 }
 
-function viewHome() {
-  return `<div class="top"><div><h1>Your Own Duel</h1><p class="muted" style="margin:6px 0 0">Duels Yu-Gi-Oh! entre amis, avec l'archétype Hueco Mundo. Le moteur d'EDOPro applique toutes les règles et tous les effets.</p></div></div>
-  <div class="grid2">
-    <section class="panel"><h2>Jouer</h2>
+function topbar() {
+  const tab = (id, ic, label) => `<button class="${!S.code && S.tab === id ? "active" : ""}" data-a="tab" data-t="${id}">${icon(ic, 17)}${label}</button>`;
+  return `<nav class="topbar" aria-label="Navigation principale">${logo()}
+    <div class="main-nav">${tab("play", "swords", "Jouer")}${tab("decks", "cards", "Mes decks")}${tab("rooms", "users", "Salles")}</div>
+    <div class="user-area"><div class="online-dot"></div><div><strong>${esc(S.name || "Sans pseudo")}</strong><small>${S.name ? "Duelliste" : "Choisis un pseudo"}</small></div><div class="avatar">${esc(initials(S.name))}</div></div></nav>`;
+}
+const emblem = () => `<div class="loader-emblem"><div class="loader-ring"></div><div class="loader-ring second"></div>${icon("swords", 42)}</div>`;
+
+/* ---------- accueil ---------- */
+function deckStats(d) {
+  let m = 0, s = 0, t = 0;
+  for (const c of d.main) { const x = text(c); if (!x) continue; if (x.type & T.SPELL) s++; else if (x.type & T.TRAP) t++; else m++; }
+  return { m, s, t };
+}
+function viewPlay() {
+  const d = allDecks().find((x) => x.id === S.deckSel) || DEMO, st = deckStats(d);
+  const preview = [...new Set(d.main)].slice(0, 4);
+  return `<section class="page play-page">
+    <div class="hero-copy">
+      <div class="eyebrow"><span></span> ARÈNE 1 CONTRE 1</div>
+      <div class="hero-title">TON DECK.<br><em>TES RÈGLES.</em><br>TON DUEL.</div>
+      <p>Crée une salle privée, invite ton adversaire avec un code et prouve que ta stratégie mérite la victoire. Le moteur d'EDOPro applique toutes les règles et tous les effets.</p>
+      <div class="hero-actions">
+        <button class="primary-action" data-a="create">${icon("plus")}Créer une salle${icon("chevron", 17)}</button>
+        <button class="secondary-action" data-a="tab" data-t="rooms">${icon("users")}Rejoindre une salle</button>
+      </div>
+      <div class="facts"><i></i><strong>14 872</strong> cartes officielles · archétype <strong>Hueco Mundo</strong></div>
+    </div>
+    <div class="duel-stage" aria-hidden="true">
+      <div class="stage-ring"></div><div class="stage-ring ring-two"></div>
+      <div class="versus-card left-card">${thumb(HM(1))}</div>
+      <div class="versus-mark"><small>PRÊT POUR</small><strong>VS</strong><span>LE DUEL</span></div>
+      <div class="versus-card right-card">${thumb(HM(9))}</div>
+    </div>
+    <div class="quick-panel">
+      <div class="panel-heading"><div><small>Deck actif</small><strong>${esc(d.name)}</strong></div><button class="icon-button" aria-label="Modifier le deck" data-a="tab" data-t="decks">${icon("edit", 17)}</button></div>
+      <div class="deck-preview">${preview.map((c, i) => `<div class="mini-stack" style="transform:translateX(${i * -8}px)">${thumb(c)}</div>`).join("")}</div>
+      <div class="deck-stats"><span><strong>${d.main.length}</strong> cartes</span><span><strong>${st.m}</strong> monstres</span><span><strong>${st.s}</strong> magies</span><span><strong>${st.t}</strong> pièges</span><span><strong>${d.extra.length}</strong> extra</span></div>
       <label class="field">Ton pseudo<input id="pname" maxlength="24" value="${esc(S.name)}" placeholder="ex. Ichigo"></label>
-      <button class="primary" data-a="create">Créer une salle</button>
-      <div class="row"><input id="jcode" maxlength="5" placeholder="Code de la salle" style="text-transform:uppercase;flex:1"><button data-a="join">Rejoindre</button></div>
-      <p class="muted small" style="margin:0">Crée une salle, puis envoie le code (ou le lien) à ton ami. Il choisit son pseudo et rejoint avec le code.</p>
-    </section>
-    ${viewDecks()}
-  </div>
-  <p class="muted small" style="margin:0">Moteur de règles : <a href="https://github.com/edo9300/ygopro-core" target="_blank" rel="noopener">ocgcore (EDOPro)</a> · scripts des cartes : <a href="https://github.com/ProjectIgnis/CardScripts" target="_blank" rel="noopener">Project Ignis</a> · <a href="https://github.com/campusdiaspora1-byte/test/tree/claude/new-session-u2ibpp/online" target="_blank" rel="noopener">code source du site</a> (AGPL-3.0). Yu-Gi-Oh! © Kazuki Takahashi, Konami. Site amateur, sans but commercial.</p>`;
+      <button class="launch-action" data-a="create"><span>${icon("swords")}</span><div><small>PARTIE PRIVÉE</small><strong>CRÉER UNE SALLE</strong></div>${icon("chevron")}</button>
+    </div>
+  </section>${footer()}`;
 }
+const footer = () => `<p class="foot">Moteur de règles : <a href="https://github.com/edo9300/ygopro-core" target="_blank" rel="noopener">ocgcore (EDOPro)</a> · scripts des cartes : <a href="https://github.com/ProjectIgnis/CardScripts" target="_blank" rel="noopener">Project Ignis</a> · <a href="https://github.com/martinshiroe/test/tree/claude/new-session-u2ibpp/online" target="_blank" rel="noopener">code source du site</a> (AGPL-3.0). Yu-Gi-Oh! © Kazuki Takahashi, Konami. Site amateur, sans but commercial.</p>`;
 
+/* ---------- decks ---------- */
+function ensureEditing() {
+  if (S.editing) return S.editing;
+  const d = allDecks().find((x) => x.id === S.deckSel) || DEMO;
+  S.editing = JSON.parse(JSON.stringify(d));
+  if (d.id === "demo") { S.editing.id = "new"; S.editing.name = d.name; S.editing.fromDemo = true; }
+  [...S.editing.main, ...S.editing.extra].forEach(text);
+  loadIndex().then(render);
+  return S.editing;
+}
 function viewDecks() {
-  if (S.editing) return viewEditor();
-  return `<section class="panel"><div class="top"><h2>Mes decks</h2><button data-a="newdeck">Nouveau deck</button></div>
-    <div class="decklist">${allDecks().map((d) => `<div class="deckrow ${d.id === S.deckSel ? "sel" : ""}" data-a="pickdeck" data-id="${esc(d.id)}" tabindex="0">
-      <div><b>${esc(d.name)}</b> <span class="muted small">${d.main.length} + ${d.extra.length}</span></div>
-      ${d.id === "demo" ? `<span class="chip">démo</span>` : `<div class="row"><button class="ghost" data-a="editdeck" data-id="${esc(d.id)}">Modifier</button></div>`}</div>`).join("")}</div>
-    <p class="muted small" style="margin:0">Importe un deck .ydk (EDOPro, YGOPRODeck, DuelingBook…) depuis « Nouveau deck ».</p></section>`;
-}
-
-function viewEditor() {
-  const d = S.editing, counts = deckCounts(d);
+  const d = ensureEditing(), counts = deckCounts(d);
   const problems = [];
   if (d.main.length < 40 || d.main.length > 60) problems.push(`Main Deck : ${d.main.length} cartes (40 à 60)`);
   if (d.extra.length > 15) problems.push(`Extra Deck : ${d.extra.length} cartes (15 max)`);
   const over = Object.entries(counts).filter(([, n]) => n > 3); if (over.length) problems.push(`Plus de 3 exemplaires : ${over.map(([c]) => cname(c)).join(", ")}`);
-  const res = S.search.length > 1 && INDEX ? INDEX.filter((c) => c.key.includes(norm(S.search))).slice(0, 60) : [];
-  const line = (code, part) => { const t = text(code); return `<div class="r"><b>${esc(t ? t.name : code)}</b><div class="row"><button class="ghost" data-a="rmcard" data-c="${code}" data-p="${part}">−</button><span class="qty">${counts[code]}</span><button class="ghost" data-a="addcard" data-c="${code}">+</button></div></div>`; };
+  const q = norm(S.search.trim());
+  const results = q.length > 1 && INDEX ? INDEX.filter((c) => c.key.includes(q)).slice(0, 48).map((c) => c.code) : Array.from({ length: 26 }, (_, i) => HM(i + 1));
+  const sel = S.selCard || results[0], st = text(sel), stats = deckStats(d);
+  const row = (code, part) => { const t = text(code); return `<div class="deck-list-row"><div class="thumb">${thumb(code)}</div><div><strong>${esc(t ? t.name : code)}</strong><small>${esc(t ? typeLine(t).split(" · ").slice(0, 2).join(" · ") : "")}</small></div><span>×${counts[code]}</span><button aria-label="Retirer ${esc(t ? t.name : "")}" data-a="rmcard" data-c="${code}" data-p="${part}">${icon("x", 14)}</button></div>`; };
   const uniq = (a) => [...new Set(a)];
-  return `<section class="panel"><div class="top"><h2>Deck</h2><div class="row"><button data-a="canceldeck">Annuler</button><button class="primary" data-a="savedeck">Enregistrer</button></div></div>
-    <label class="field">Nom<input id="dname" maxlength="40" value="${esc(d.name)}"></label>
-    <div class="field">Importer un .ydk<input type="file" id="ydk" accept=".ydk,text/plain"></div>
-    <details><summary class="muted small">ou coller le contenu d'un .ydk</summary><textarea id="ydktxt" placeholder="#main&#10;89631139&#10;…"></textarea><button data-a="pasteydk">Importer le texte</button></details>
-    <div class="small">${problems.length ? problems.map((p) => `<div class="bad">✗ ${esc(p)}</div>`).join("") : `<div class="ok">✓ Deck valide</div>`}</div>
-    <label class="field">Ajouter une carte<input id="dsearch" value="${esc(S.search)}" placeholder="Nom en français ou en anglais"></label>
-    ${res.length ? `<div class="results">${res.map((c) => `<div class="r"><b>${esc(c.name)}</b><button class="ghost" data-a="addcard" data-c="${c.code}">+</button></div>`).join("")}</div>` : ""}
-    <h3>Main Deck (${d.main.length})</h3><div class="results">${uniq(d.main).map((c) => line(c, "main")).join("") || `<p class="muted small">Vide</p>`}</div>
-    <h3>Extra Deck (${d.extra.length})</h3><div class="results">${uniq(d.extra).map((c) => line(c, "extra")).join("") || `<p class="muted small">Vide</p>`}</div>
-    ${d.id !== "new" ? `<button class="danger" data-a="deldeck">Supprimer ce deck</button>` : ""}</section>`;
+  return `<section class="page">
+    <header class="section-heading"><div><div class="eyebrow"><span></span> ATELIER DU DUELLISTE</div><div class="section-title">ÉDITEUR DE DECK</div><p>Construis ta stratégie : toutes les cartes officielles et l'archétype Hueco Mundo.</p></div></header>
+    <div class="deck-workspace">
+      <aside class="deck-sidebar">
+        <div class="sidebar-label">MES DECKS <span>${allDecks().length}</span></div>
+        ${allDecks().map((x) => `<button class="deck-option ${x.id === S.deckSel ? "selected" : ""}" data-a="pickdeck" data-id="${esc(x.id)}"><span class="deck-option-icon">${icon("cards")}</span><span><strong>${esc(x.name)}</strong><small>${x.main.length} + ${x.extra.length} cartes${x.id === "demo" ? " · démo" : ""}</small></span></button>`).join("")}
+        <button class="new-deck" data-a="newdeck">${icon("plus", 17)}NOUVEAU DECK</button>
+        <details class="import-box"><summary>Importer un .ydk</summary><input type="file" id="ydk" accept=".ydk,text/plain" aria-label="Fichier .ydk"><textarea id="ydktxt" placeholder="ou colle le contenu du .ydk ici"></textarea><button class="ghost-action" data-a="pasteydk">Importer le texte</button></details>
+        <div class="deck-rules">${icon("shield", 18)}<div><strong>FORMAT AMICAL</strong><span>40 à 60 cartes · Extra Deck 15 max · 3 exemplaires max · sans liste de bannissement</span></div></div>
+      </aside>
+      <div class="collection-panel">
+        <div class="collection-toolbar"><div class="search-field">${icon("search", 18)}<input id="dsearch" value="${esc(S.search)}" placeholder="Rechercher une carte (français ou anglais)…" aria-label="Rechercher une carte"></div>
+          <span class="collection-count">${q.length > 1 ? `${results.length}${results.length === 48 ? "+" : ""} RÉSULTATS` : "HUECO MUNDO"}</span></div>
+        <div class="card-grid">${results.map((c) => `<button class="collection-card ${sel === c ? "selected" : ""}" data-a="addcard" data-c="${c}" aria-label="Ajouter ${esc(cname(c))}">${thumb(c)}${counts[c] ? `<span class="owned">×${counts[c]}</span>` : ""}<span class="add-card">${icon("plus", 14)}</span></button>`).join("") || `<p class="muted">Aucune carte trouvée.</p>`}</div>
+        <div class="card-detail"><div class="detail-accent"></div><div><small class="label">Carte sélectionnée</small><strong>${esc(cname(sel))}</strong><span>${esc(typeLine(st))}</span><p>${esc(st ? st.desc : "")}</p></div></div>
+      </div>
+      <aside class="current-deck">
+        <div class="current-deck-head"><input id="dname" maxlength="40" value="${esc(d.name)}" aria-label="Nom du deck">
+          <div class="meter-line"><small class="label">Deck principal</small><strong>${d.main.length} <span>/ 40</span></strong></div>
+          <div class="deck-meter"><i class="${d.main.length > 60 ? "over" : ""}" style="width:${Math.min(100, (d.main.length / 40) * 100)}%"></i></div></div>
+        <div class="deck-card-list">${uniq(d.main).map((c) => row(c, "main")).join("") || `<p class="muted small">Clique sur une carte pour l'ajouter.</p>`}
+          ${d.extra.length ? `<div class="list-title">EXTRA DECK (${d.extra.length})</div>${uniq(d.extra).map((c) => row(c, "extra")).join("")}` : ""}</div>
+        <div class="problems">${problems.length ? problems.map((p) => `<div class="bad">✗ ${esc(p)}</div>`).join("") : `<div class="ok">✓ Deck valide</div>`}</div>
+        <div class="deck-summary"><div><span>Monstres</span><strong>${stats.m}</strong></div><div><span>Magies</span><strong>${stats.s}</strong></div><div><span>Pièges</span><strong>${stats.t}</strong></div><div><span>Extra</span><strong>${d.extra.length}</strong></div></div>
+        <button class="save-button" data-a="savedeck">${d.fromDemo ? "ENREGISTRER UNE COPIE" : "SAUVEGARDER LE DECK"}</button>
+        ${d.id !== "new" ? `<button class="ghost-action danger-action" data-a="deldeck">${S.armed === "del" ? "Confirmer la suppression ?" : "Supprimer ce deck"}</button>` : ""}
+      </aside>
+    </div></section>`;
 }
 
-function viewRoom() {
+/* ---------- salles ---------- */
+function viewRooms() {
+  return `<section class="page">
+    <header class="section-heading"><div><div class="eyebrow"><span></span> SALLES PRIVÉES</div><div class="section-title">CHOISIS TON ADVERSAIRE</div><p>Crée une salle et envoie son code, ou rejoins celle d'un ami.</p></div>
+      <button class="primary-action" data-a="create">${icon("plus")}Créer une salle</button></header>
+    <div class="room-layout">
+      <div class="join-card"><div class="join-icon">${icon("users", 28)}</div><small>REJOINDRE PAR CODE</small><strong>Tu as reçu une invitation ?</strong><p>Saisis le code à 5 caractères de la salle de ton adversaire.</p>
+        <label class="field" style="text-align:left">Ton pseudo<input id="pname" maxlength="24" value="${esc(S.name)}" placeholder="ex. Ulquiorra"></label>
+        <form class="code-entry" data-a="joinform"><input id="jcode" maxlength="5" placeholder="CODE" aria-label="Code de salle" autocomplete="off"><button aria-label="Rejoindre">${icon("chevron")}</button></form></div>
+      <div class="room-browser"><div class="browser-head"><div><small class="label">Sur cet appareil</small><strong>Mes salles récentes</strong></div></div>
+        ${S.rooms.length ? S.rooms.map((r) => `<div class="room-row"><span class="host"><i>${esc(r.code.slice(0, 2))}</i><b>${esc(r.code)}</b><small>${new Date(r.at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</small></span><span>${store.get("room-" + r.code) ? "Ta place est gardée" : "Spectateur"}</span><button class="join-room" data-a="reopen" data-c="${esc(r.code)}">REVENIR</button></div>`).join("")
+          : `<div class="empty-rooms">Aucune salle pour l'instant. Crée la première, ou entre le code qu'un ami t'a envoyé.</div>`}
+      </div>
+    </div></section>${footer()}`;
+}
+
+/* ---------- préparation ---------- */
+function viewPrep() {
   const v = S.view, me = v.seat, link = location.origin + "/?salle=" + v.code;
-  const pl = (s) => { const p = v.players[s]; return p ? `<div class="deckrow"><div><b>${esc(p.name)}</b>${s === me ? ` <span class="muted small">(toi)</span>` : ""}</div>${p.ready ? `<span class="chip ok">prêt · ${esc(p.deckName || "deck")}</span>` : `<span class="chip">choisit son deck</span>`}</div>` : `<div class="deckrow"><span class="muted">En attente du 2e joueur…</span></div>`; };
-  return `<div class="top"><div class="row"><button data-a="leave">← Accueil</button><h2>Salle</h2><span class="code">${esc(v.code)}</span></div></div>
-  <div class="grid2">
-    <section class="panel"><h2>Joueurs</h2>${pl("A")}${pl("B")}
-      <div class="field">Lien à envoyer à ton ami<div class="row"><input id="rlink" readonly value="${esc(link)}" style="flex:1"><button data-a="copylink">Copier</button></div></div>
-      ${me ? (v.players[me].ready ? `<p class="muted small" style="margin:0">Deck validé. Le duel commence dès que l'autre joueur a validé le sien.</p>` : `<button class="primary" data-a="ready">Valider « ${esc((allDecks().find((d) => d.id === S.deckSel) || DEMO).name)} »</button>`) : `<p class="muted">Tu regardes cette salle.</p>`}
-      ${!me && !v.players.B ? `<label class="field">Ton pseudo<input id="pname" maxlength="24" value="${esc(S.name)}"></label><button class="primary" data-a="joinhere">Prendre la place</button>` : ""}
-    </section>
-    ${me && !v.players[me].ready ? viewDecks() : ""}
-  </div>`;
+  const pl = (s) => { const p = v.players[s]; return p ? `<b>${esc(initials(p.name))}</b><div><span>${esc(p.name)}${s === me ? " (toi)" : ""}</span><em class="${p.ready ? "ready" : ""}">${p.ready ? "PRÊT · " + esc(p.deckName || "deck") : "CHOIX DU DECK"}</em></div>` : `<b>?</b><div><span>Adversaire</span><em>EN ATTENTE</em></div>`; };
+  const d = allDecks().find((x) => x.id === S.deckSel) || DEMO;
+  return `<section class="prep"><div class="loader-content">
+    ${emblem()}<div class="loader-title">PRÉPARATION DU DUEL</div>
+    <p>${v.players.B ? "Les deux duellistes sont là : validez vos decks." : "Envoie ce code ou le lien à ton adversaire."}</p>
+    <div class="room-code">${esc(v.code)}</div>
+    <div class="players-loading"><span>${pl("A")}</span><strong>VS</strong><span>${pl("B")}</span></div>
+    <div class="prep-box">
+      <div class="field">Lien d'invitation<div class="row"><input id="rlink" readonly value="${esc(link)}"><button class="ghost-action" data-a="copylink">${icon("copy", 15)}Copier</button></div></div>
+      ${me ? (v.players[me].ready ? `<p class="muted small" style="margin:0">Ton deck est validé. Le duel commence dès que ton adversaire a validé le sien.</p>`
+        : `<div class="field">Ton deck<div class="row"><select id="deckpick" aria-label="Deck">${allDecks().map((x) => `<option value="${esc(x.id)}" ${x.id === d.id ? "selected" : ""}>${esc(x.name)} (${x.main.length} + ${x.extra.length})</option>`).join("")}</select><button class="primary-action" data-a="ready">Valider</button></div></div>`)
+        : !v.players.B ? `<label class="field">Ton pseudo<input id="pname" maxlength="24" value="${esc(S.name)}"></label><button class="primary-action" data-a="joinhere">Prendre la place</button>` : `<p class="muted small" style="margin:0">La salle est complète : tu la regardes en spectateur.</p>`}
+    </div>
+    <button class="cancel-load" data-a="leave">QUITTER LA SALLE</button>
+  </div></section>`;
 }
 
 /* ---------- duel ---------- */
@@ -265,8 +366,8 @@ function actionsMap(p) {
     p.summons.forEach((c, i) => add(c, "Invocation Normale", { type: RESP.SELECT_IDLECMD, action: 0, index: i }));
     p.special_summons.forEach((c, i) => add(c, "Invocation Spéciale", { type: RESP.SELECT_IDLECMD, action: 1, index: i }));
     p.pos_changes.forEach((c, i) => add(c, "Changer de position", { type: RESP.SELECT_IDLECMD, action: 2, index: i }));
-    p.monster_sets.forEach((c, i) => add(c, "Poser (face verso)", { type: RESP.SELECT_IDLECMD, action: 3, index: i }));
-    p.spell_sets.forEach((c, i) => add(c, "Poser (face verso)", { type: RESP.SELECT_IDLECMD, action: 4, index: i }));
+    p.monster_sets.forEach((c, i) => add(c, "Poser", { type: RESP.SELECT_IDLECMD, action: 3, index: i }));
+    p.spell_sets.forEach((c, i) => add(c, "Poser", { type: RESP.SELECT_IDLECMD, action: 4, index: i }));
     p.activates.forEach((c, i) => add(c, "Activer : " + desc(c.description), { type: RESP.SELECT_IDLECMD, action: 5, index: i }));
   }
   if (p.type === MSG.SELECT_BATTLECMD) {
@@ -276,7 +377,7 @@ function actionsMap(p) {
   return A;
 }
 // Zones libres d'une question SELECT_PLACE : bit à 1 = zone interdite
-function placeList(p, me) {
+function placeList(p) {
   const out = [];
   for (const [base, l, n, rel] of [[0, LOC.MZONE, 7, 0], [8, LOC.SZONE, 8, 0], [16, LOC.MZONE, 7, 1], [24, LOC.SZONE, 8, 1]])
     for (let i = 0; i < n; i++) if (!(p.field_mask & (1 << (base + i)))) out.push({ player: rel ? 1 - p.player : p.player, location: l, sequence: i });
@@ -286,84 +387,97 @@ function placeList(p, me) {
 function viewDuel() {
   const v = S.view, d = v.duel, me = v.team === 1 ? 1 : 0, op = 1 - me, F = d.field;
   const p = d.prompt, acts = p ? actionsMap(p) : {};
-  const places = p && (p.type === MSG.SELECT_PLACE || p.type === MSG.SELECT_DISFIELD) ? placeList(p, me) : [];
+  const places = p && (p.type === MSG.SELECT_PLACE || p.type === MSG.SELECT_DISFIELD) ? placeList(p) : [];
   const seatOfTeam = (t) => Object.keys(v.teams).find((s) => v.teams[s] === t);
   const pname = (t) => { const s = seatOfTeam(t); return (v.players[s] && v.players[s].name) || (t ? "Joueur 2" : "Joueur 1"); };
 
-  const cell = (ctrl, l, s, extra = "") => {
+  const zone = (ctrl, l, s, extra = "") => {
     const c = l === LOC.MZONE ? F[ctrl].m[s] : F[ctrl].s[s];
     const k = key(ctrl, l, s), isPlace = places.some((x) => x.player === ctrl && x.location === l && x.sequence === s);
     const picked = S.picks.some((x) => x.player === ctrl && x.location === l && x.sequence === s);
-    const lbl = l === LOC.MZONE ? (s >= 5 ? "Extra" : "Monstre") : s === 5 ? "Terrain" : s === 0 || s === 4 ? "M/P · Pendule" : "Mag/Piège";
-    return `<div class="cell ${extra} ${isPlace ? "place" : ""} ${picked ? "picked" : ""}" data-a="cell" data-k="${k}" tabindex="0">${c ? cardHTML(c, { cls: acts[k] ? "act" : S.focus === k ? "sel" : "", key: k, monster: l === LOC.MZONE }) : `<span class="lbl">${lbl}</span>`}</div>`;
+    const lbl = l === LOC.MZONE ? (s >= 5 ? "Zone Monstre Extra" : "Monstre") : s === 5 ? "Terrain" : s === 0 || s === 4 ? "Mag/Piège · Pendule" : "Mag / Piège";
+    const pend = l === LOC.SZONE && (s === 0 || s === 4) ? ((s === 0) === (ctrl === me) ? "blue" : "red") : "";
+    return `<div class="board-zone ${extra} ${pend} ${isPlace ? "place" : ""} ${picked ? "picked" : ""}" data-a="cell" data-k="${k}" tabindex="0" aria-label="${esc(c && c.code ? cname(c.code) : lbl)}">${c ? cardHTML(c, { cls: acts[k] ? "act" : S.focus === k ? "sel" : "", key: k, monster: l === LOC.MZONE }) : `<span class="zone-mark">${lbl}</span>`}${pend ? `<span class="pendulum-gem"><i></i></span>` : ""}</div>`;
   };
   const pile = (ctrl, what) => {
     const f = F[ctrl];
     const n = what === "deck" ? f.deck : what === "extra" ? f.extraCount : f[what].filter(Boolean).length;
-    const top = what === "gy" || what === "ban" ? f[what].filter(Boolean).slice(-1)[0] : what === "extra" && ctrl === me ? null : null;
-    const anyAct = Object.keys(acts).some((k) => k.startsWith(`${ctrl}:${{ gy: LOC.GRAVE, ban: LOC.REMOVED, extra: LOC.EXTRA, deck: LOC.DECK }[what]}:`));
-    const label = { deck: "Deck", extra: "Extra", gy: "Cimet.", ban: "Bannies" }[what];
-    return `<div class="cell" data-a="pile" data-c="${ctrl}" data-w="${what}" tabindex="0" title="${label}">${n ? `<div class="card ${anyAct ? "act" : ""}">${top ? face(top.code) : `<div class="back"></div>`}<span class="pilecount">${n}</span></div>` : `<span class="lbl">${label}</span>`}</div>`;
+    const top = what === "gy" || what === "ban" ? f[what].filter(Boolean).slice(-1)[0] : null;
+    const lc = { gy: LOC.GRAVE, ban: LOC.REMOVED, extra: LOC.EXTRA, deck: LOC.DECK }[what];
+    const anyAct = Object.keys(acts).some((k) => k.startsWith(`${ctrl}:${lc}:`));
+    const label = { deck: "Deck", extra: "Extra Deck", gy: "Cimetière", ban: "Bannies" }[what];
+    return `<div class="board-zone ${what === "ban" ? "emz" : ""}" data-a="pile" data-c="${ctrl}" data-w="${what}" tabindex="0" aria-label="${label} : ${n}">${n ? `<div class="card ${anyAct ? "act" : ""}">${top ? face(top.code) : `<div class="back"></div>`}</div><span class="zone-count">${n}</span>` : `<span class="zone-mark">${label}</span>`}</div>`;
   };
-  const sRow = (ctrl, flip) => { const idx = flip ? [4, 3, 2, 1, 0] : [0, 1, 2, 3, 4]; const r = [pile(ctrl, "extra"), ...idx.map((i) => cell(ctrl, LOC.SZONE, i)), pile(ctrl, "deck")]; return flip ? r.reverse() : r; };
-  const mRow = (ctrl, flip) => { const idx = flip ? [4, 3, 2, 1, 0] : [0, 1, 2, 3, 4]; const r = [cell(ctrl, LOC.SZONE, 5), ...idx.map((i) => cell(ctrl, LOC.MZONE, i)), pile(ctrl, "gy")]; return flip ? r.reverse() : r; };
-  // Zones Monstre Extra : partagées ; la gauche de l'un est la droite de l'autre
-  const emz = (side) => { const mine = side === 0 ? 5 : 6, theirs = side === 0 ? 6 : 5; return F[op].m[theirs] ? cell(op, LOC.MZONE, theirs, "emz") : cell(me, LOC.MZONE, mine, "emz"); };
-  const hand = F[me].hand.filter(Boolean).map((c, i) => { const k = key(me, LOC.HAND, i); return cardHTML({ ...c, pos: POS.FUA }, { cls: acts[k] ? "act" : S.focus === k ? "sel" : "", key: k }); }).join("");
-  const oppHand = F[op].hand.filter(Boolean).map((c, i) => cardHTML({ ...c, pos: c.code ? POS.FUA : POS.FDA }, { key: key(op, LOC.HAND, i) })).join("");
+  const sRow = (ctrl, flip) => { const idx = flip ? [4, 3, 2, 1, 0] : [0, 1, 2, 3, 4]; const r = [pile(ctrl, "extra"), ...idx.map((i) => zone(ctrl, LOC.SZONE, i)), pile(ctrl, "deck")]; return (flip ? r.reverse() : r).join(""); };
+  const mRow = (ctrl, flip) => { const idx = flip ? [4, 3, 2, 1, 0] : [0, 1, 2, 3, 4]; const r = [zone(ctrl, LOC.SZONE, 5), ...idx.map((i) => zone(ctrl, LOC.MZONE, i)), pile(ctrl, "gy")]; return (flip ? r.reverse() : r).join(""); };
+  const emz = (side) => { const mine = side === 0 ? 5 : 6, theirs = side === 0 ? 6 : 5; return F[op].m[theirs] ? zone(op, LOC.MZONE, theirs, "emz") : zone(me, LOC.MZONE, mine, "emz"); };
+  const hand = F[me].hand.filter(Boolean).map((c, i) => { const k = key(me, LOC.HAND, i); return `<div class="hand-card ${S.focus === k ? "selected" : ""}">${cardHTML({ ...c, pos: POS.FUA }, { cls: acts[k] ? "act" : "", key: k })}</div>`; }).join("");
+  const oppHand = F[op].hand.filter(Boolean).map((c, i) => (c.code ? cardHTML({ ...c, pos: POS.FUA }, { key: key(op, LOC.HAND, i) }) : `<div class="back"></div>`)).join("");
 
-  // tour et phase, d'après le journal
   let turnPl = null, phase = 0, turnNo = 0;
   for (const e of S.log) { if (e.type === MSG.NEW_TURN) { turnPl = e.player; turnNo++; phase = 1; } if (e.type === MSG.NEW_PHASE) phase = PHASE_OF(e.phase); }
+  const phaseIdx = PHASES.findIndex(([b]) => b === phase);
 
-  const lpbar = (t) => `<div class="lpbar"><div class="who"><span class="dot" style="background:${t === me ? "var(--me)" : "var(--opp)"}"></span>${esc(pname(t))}${turnPl === t ? ` <span class="chip ok">son tour</span>` : ""}</div><span class="lp">${F[t].lp} LP</span>
-    <button class="ghost" data-a="pile" data-c="${t}" data-w="ban">Bannies (${F[t].ban.filter(Boolean).length})</button></div>`;
+  const player = (t, top) => `<div class="arena-player ${top ? "top-player" : "bottom-player"}">
+    <div class="player-name"><span class="presence ${t === me ? "" : "rival"}"></span><strong>${esc(pname(t))}</strong>${turnPl === t ? `<i>SON TOUR</i>` : "<span></span>"}<small>${t === me ? (v.seat ? "TOI" : "JOUEUR") : "ADVERSAIRE"}</small></div>
+    <div class="arena-lp"><small>LIFE POINTS</small><strong>${F[t].lp.toLocaleString("fr-FR")}</strong><i><b style="width:${Math.max(0, Math.min(100, F[t].lp / 80))}%"></b></i></div>
+    <button class="banished" data-a="pile" data-c="${t}" data-w="ban">BANNIES <span>${F[t].ban.filter(Boolean).length}</span></button></div>`;
 
-  const board = `<section class="mat" aria-label="Terrain">
-    ${lpbar(op)}
-    <div class="hand opp">${oppHand}</div>
-    <div class="zrow">${sRow(op, true).join("")}</div>
-    <div class="zrow">${mRow(op, true).join("")}</div>
-    <div class="zrow"><div class="cell blank"></div><div class="cell blank"></div>${emz(0)}<div class="cell blank" style="display:grid;place-items:center"><span class="mid">vs</span></div>${emz(1)}<div class="cell blank"></div><div class="cell blank"></div></div>
-    <div class="zrow">${mRow(me, false).join("")}</div>
-    <div class="zrow">${sRow(me, false).join("")}</div>
-    ${lpbar(me)}
-    <div class="hand" aria-label="Ta main">${hand || `<span class="muted">Main vide</span>`}</div>
-  </section>`;
+  const board = `<div class="arena-panel" aria-label="Terrain">
+    ${player(op, true)}
+    <div class="table-hand opponent-cards">${oppHand}</div>
+    <div class="compact-board">
+      <div class="board-row">${sRow(op, true)}</div>
+      <div class="board-row">${mRow(op, true)}</div>
+      <div class="board-row">${pile(op, "ban")}<div class="board-zone blank"></div>${emz(0)}<div class="board-zone blank versus-chip">${icon("swords", 17)}<span>YOUR OWN DUEL</span></div>${emz(1)}<div class="board-zone blank"></div>${pile(me, "ban")}</div>
+      <div class="board-row">${mRow(me, false)}</div>
+      <div class="board-row">${sRow(me, false)}</div>
+    </div>
+    ${player(me, false)}
+    <div class="table-hand player-cards" aria-label="Ta main">${hand || `<span class="muted small">Main vide</span>`}</div>
+  </div>`;
 
-  const side = `<div style="display:grid;gap:12px;min-width:0">
-    <section class="panel"><div class="top"><div><b>Tour ${turnNo || 1}</b> · ${esc(turnPl == null ? "" : pname(turnPl))}</div>${v.seat && !d.ended ? `<button class="danger" data-a="surrender">${S.armed === "surrender" ? "Confirmer l'abandon ?" : "Abandonner"}</button>` : ""}</div>
-      <div class="phases">${PHASES.map(([b, n]) => `<span class="${phase === b ? "on" : ""}">${n}</span>`).join("")}</div>
-      ${d.chain && d.chain.length ? `<div class="chain"><span class="muted small">Chaîne :</span>${d.chain.map((c) => `<div class="card">${face(c.code)}</div>`).join("")}</div>` : ""}</section>
+  const sidebar = `<aside class="game-sidebar">
+    <div class="side-card turn-card">
+      <div class="turn-heading"><div><strong>TOUR ${turnNo || 1}</strong> <span>· ${esc(turnPl == null ? "" : pname(turnPl))}</span></div>${v.seat && !d.ended ? `<button class="side-ghost danger-action" data-a="surrender">${S.armed === "surrender" ? "CONFIRMER ?" : "ABANDONNER"}</button>` : ""}</div>
+      <div class="horizontal-phases">${PHASES.map(([b, n], i) => `<span class="${i === phaseIdx ? "active" : i < phaseIdx ? "done" : ""}">${n.toUpperCase()}</span>`).join("")}</div>
+      ${d.chain && d.chain.length ? `<div class="chain-preview"><span>CHAÎNE :</span>${d.chain.map((c) => `<div class="chain-card">${thumb(c.code)}</div>`).join("")}</div>` : ""}
+    </div>
     ${d.ended ? viewEnd(d, me, pname) : viewPrompt(p, acts, places, me, pname, d)}
     ${S.focus ? viewFocus(acts) : ""}
-    <section class="panel"><h3>Journal</h3><div class="log" id="log">${S.log.slice(-120).map((e) => logLine(e, me, pname)).filter(Boolean).join("")}</div>
-      ${v.seat ? `<form class="chatform" data-a="chat"><input id="chatin" maxlength="200" placeholder="Message à ton adversaire" aria-label="Message"><button>Envoyer</button></form>` : ""}
-      ${(v.chat || []).slice(-6).map((c) => `<div class="small"><b style="color:${v.teams[c.seat] === me ? "var(--me)" : "var(--opp)"}">${esc(v.players[c.seat] ? v.players[c.seat].name : c.seat)}</b> ${esc(c.t)}</div>`).join("")}
-    </section></div>`;
-  return `<div class="top"><div class="row"><button data-a="leave">← Accueil</button><h2>Salle <span class="code" style="font-size:20px">${esc(v.code)}</span></h2>${v.seat ? "" : `<span class="chip">spectateur</span>`}</div></div>
-    <div class="duel">${board}${side}</div>`;
+    <div class="side-card journal-card"><div class="journal-heading"><strong>JOURNAL DU DUEL</strong><span>EN DIRECT</span></div>
+      <div class="journal-feed" id="log">${S.log.slice(-150).map((e) => logLine(e, me, pname)).filter(Boolean).join("")}</div>
+      ${(v.chat || []).slice(-6).map((c) => `<div class="chat-line"><b style="color:${v.teams[c.seat] === me ? "var(--green)" : "#dd6965"}">${esc(v.players[c.seat] ? v.players[c.seat].name : c.seat)}</b> ${esc(c.t)}</div>`).join("")}
+      ${v.seat ? `<form class="chat-entry" data-a="chat"><input id="chatin" maxlength="200" placeholder="Message à ton adversaire…" aria-label="Message"><button>ENVOYER</button></form>` : ""}
+    </div>
+  </aside>`;
+
+  return `<section class="yod-game">
+    <header class="game-header"><button class="back-lobby" data-a="leave">${icon("chevron", 16)}ACCUEIL</button>
+      <div class="room-identity"><small>SALLE PRIVÉE</small><strong>${esc(v.code)}</strong></div>${v.seat ? "" : `<span class="spectator">SPECTATEUR</span>`}
+      <button class="invite-code" data-a="copycode">${icon("copy", 15)}COPIER LE LIEN</button></header>
+    <div class="game-layout">${board}${sidebar}</div></section>`;
 }
 
 function viewEnd(d, me, pname) {
   const won = d.winner === me;
-  return `<section class="panel end"><h2>${d.winner == null ? "Égalité" : won ? "Victoire !" : "Défaite"}</h2>
-    <p class="muted" style="margin:0">${d.surrendered ? "Abandon." : ""} ${d.winner != null ? esc(pname(d.winner)) + " remporte le duel." : ""}</p>
-    ${S.view.seat ? `<button class="primary" data-a="rematch">Revanche</button>` : ""}</section>`;
+  return `<div class="side-card end-card"><h2 class="${d.winner == null ? "" : won ? "win" : "lose"}">${d.winner == null ? "ÉGALITÉ" : won ? "VICTOIRE" : "DÉFAITE"}</h2>
+    <p class="muted small" style="margin:0">${d.surrendered ? "Abandon. " : ""}${d.winner != null ? esc(pname(d.winner)) + " remporte le duel." : ""}</p>
+    ${S.view.seat ? `<button class="next-phase" data-a="rematch">REVANCHE ${icon("chevron", 15)}</button>` : ""}</div>`;
 }
 
 function viewFocus(acts) {
   const [c, l, s] = S.focus.split(":").map(Number);
   const F = S.view.duel.field[c];
   const card = l === LOC.HAND ? F.hand[s] : l === LOC.MZONE ? F.m[s] : l === LOC.SZONE ? F.s[s] : l === LOC.GRAVE ? F.gy[s] : l === LOC.REMOVED ? F.ban[s] : l === LOC.EXTRA ? (F.extra || [])[s] : null;
-  const code = card ? card.code : S.focusCode;
+  const code = card ? card.code : 0;
   const t = text(code), list = acts[S.focus] || [];
-  return `<section class="panel"><div class="detail"><div class="card">${face(code)}</div><div style="display:grid;gap:6px;align-content:start;min-width:0">
-    <div class="top"><h3>${esc(code ? cname(code) : "Carte face verso")}</h3><button class="ghost" data-a="unfocus" aria-label="Fermer">✕</button></div>
-    <div class="muted small">${esc(typeLine(t))}</div>
-    ${card && card.mats && card.mats.length ? `<div class="small muted">Matériels : ${card.mats.map((m) => esc(cname(m))).join(", ")}</div>` : ""}
-    ${list.length ? `<div class="menu">${list.map((a, i) => `<button class="primary" data-a="doact" data-i="${i}">${esc(a.label)}</button>`).join("")}</div>` : ""}
-    <div class="txt">${esc(t ? t.desc : "")}</div></div></div></section>`;
+  return `<div class="selected-side-card"><div class="selected-top">${thumb(code)}<div>
+      <div class="turn-heading"><small>CARTE SÉLECTIONNÉE</small><button class="side-ghost" style="min-height:26px;padding:0 8px" data-a="unfocus" aria-label="Fermer">${icon("x", 14)}</button></div>
+      <strong>${esc(code ? cname(code) : "Carte face verso")}</strong><span>${esc(typeLine(t))}</span>
+      ${card && card.mats && card.mats.length ? `<span>Matériels : ${card.mats.map((m) => esc(cname(m))).join(", ")}</span>` : ""}</div></div>
+    ${list.length ? `<div class="menu">${list.map((a, i) => `<button class="${i === 0 ? "side-primary" : "side-ghost"}" ${S.busy ? "disabled" : ""} data-a="doact" data-i="${i}">${esc(a.label)}</button>`).join("")}</div>` : ""}
+    ${t && t.desc ? `<div class="card-text">${esc(t.desc)}</div>` : ""}</div>`;
 }
 
 function choiceGrid(cards, { picked = [], marked = [] } = {}) {
@@ -372,123 +486,120 @@ function choiceGrid(cards, { picked = [], marked = [] } = {}) {
 }
 
 function viewPrompt(p, acts, places, me, pname, d) {
-  if (!S.view.seat) return `<section class="panel prompt wait"><h3>${d.waitingFor != null ? `${esc(pname(d.waitingFor))} réfléchit…` : "…"}</h3></section>`;
-  if (!p) return `<section class="panel prompt wait"><h3>${d.waitingFor != null && d.waitingFor !== me ? `${esc(pname(d.waitingFor))} réfléchit…` : "Le moteur résout…"}</h3><p class="muted small" style="margin:0">Tu seras prévenu dès que c'est à toi.</p></section>`;
+  const wait = (title, sub) => `<div class="side-card prompt-card wait"><div class="prompt-head"><div class="waiting-icon">${icon("clock", 20)}</div><div><strong>${esc(title)}</strong><p>${esc(sub)}</p></div></div></div>`;
+  if (!S.view.seat) return wait(d.waitingFor != null ? `${pname(d.waitingFor)} réfléchit…` : "…", "Tu regardes ce duel en spectateur.");
+  if (!p) return wait(d.waitingFor != null && d.waitingFor !== me ? `${pname(d.waitingFor)} réfléchit…` : "Le moteur résout…", "Tu seras prévenu dès que c'est à toi.");
   const busy = S.busy ? "disabled" : "";
-  const title = (t) => `<h3>${esc(t)}</h3>${d.hint ? `<p class="muted small" style="margin:0">${esc(desc(d.hint))}</p>` : ""}`;
-  const P = (h) => `<section class="panel prompt">${h}</section>`;
+  const R = (r) => `data-a="raw" data-r='${JSON.stringify(r)}'`;
+  const P = (title, sub, body = "") => `<div class="side-card prompt-card"><div class="prompt-head"><div class="waiting-icon">${icon("spark", 20)}</div><div><strong>${esc(title)}</strong>${sub || d.hint ? `<p>${esc(sub || desc(d.hint))}</p>` : ""}</div></div>${body}</div>`;
   switch (p.type) {
     case MSG.SELECT_IDLECMD: {
       const n = Object.keys(acts).length;
-      return P(`<h3>À toi de jouer</h3><p class="muted small" style="margin:0">${n ? "Les cartes qui brillent ont une action : clique dessus." : "Aucune action possible avec tes cartes."}</p>
-        <div class="row">${p.to_bp ? `<button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_IDLECMD, action: 6, index: null })}'>Battle Phase</button>` : ""}
-        ${p.to_ep ? `<button class="primary" ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_IDLECMD, action: 7, index: null })}'>Fin du tour</button>` : ""}
-        ${p.shuffle ? `<button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_IDLECMD, action: 8, index: null })}'>Mélanger la main</button>` : ""}</div>`);
+      return P("À toi de jouer", n ? "Les cartes qui brillent ont une action : clique dessus." : "Aucune action possible avec tes cartes.",
+        `<div class="btns">${p.to_bp ? `<button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_IDLECMD, action: 6, index: null })}>BATTLE PHASE</button>` : ""}
+        ${p.to_ep ? `<button class="next-phase" ${busy} ${R({ type: RESP.SELECT_IDLECMD, action: 7, index: null })}>FIN DU TOUR ${icon("chevron", 15)}</button>` : ""}
+        ${p.shuffle ? `<button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_IDLECMD, action: 8, index: null })}>MÉLANGER LA MAIN</button>` : ""}</div>`);
     }
     case MSG.SELECT_BATTLECMD:
-      return P(`<h3>Battle Phase</h3><p class="muted small" style="margin:0">Clique sur un monstre qui brille pour attaquer ou activer un effet.</p>
-        <div class="row">${p.to_m2 ? `<button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_BATTLECMD, action: 2, index: null })}'>Main Phase 2</button>` : ""}
-        ${p.to_ep ? `<button class="primary" ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_BATTLECMD, action: 3, index: null })}'>Fin du tour</button>` : ""}</div>`);
+      return P("Battle Phase", "Clique sur un monstre qui brille pour attaquer ou activer un effet.",
+        `<div class="btns">${p.to_m2 ? `<button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_BATTLECMD, action: 2, index: null })}>MAIN PHASE 2</button>` : ""}
+        ${p.to_ep ? `<button class="next-phase" ${busy} ${R({ type: RESP.SELECT_BATTLECMD, action: 3, index: null })}>FIN DU TOUR ${icon("chevron", 15)}</button>` : ""}</div>`);
     case MSG.SELECT_EFFECTYN:
-      return P(`${title(`Activer « ${cname(p.code)} » ?`)}<div class="detail"><div class="card">${face(p.code)}</div><div class="txt">${esc(desc(p.description))}</div></div>
-        <div class="row"><button class="primary" ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_EFFECTYN, yes: true })}'>Oui</button><button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_EFFECTYN, yes: false })}'>Non</button></div>`);
+      return P(`Activer « ${cname(p.code)} » ?`, fill(desc(p.description), [cname(p.code), LOCN[p.location] || ""]), `<div class="btns"><button class="next-phase" ${busy} ${R({ type: RESP.SELECT_EFFECTYN, yes: true })}>OUI</button><button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_EFFECTYN, yes: false })}>NON</button></div>`);
     case MSG.SELECT_YESNO:
-      return P(`${title(desc(p.description))}<div class="row"><button class="primary" ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_YESNO, yes: true })}'>Oui</button><button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_YESNO, yes: false })}'>Non</button></div>`);
+      return P(fill(desc(p.description), []), "", `<div class="btns"><button class="next-phase" ${busy} ${R({ type: RESP.SELECT_YESNO, yes: true })}>OUI</button><button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_YESNO, yes: false })}>NON</button></div>`);
     case MSG.SELECT_OPTION:
-      return P(`${title("Choisis une option")}<div class="menu">${p.options.map((o, i) => `<button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_OPTION, index: i })}'>${esc(desc(o))}</button>`).join("")}</div>`);
+      return P("Choisis une option", "", `<div class="menu">${p.options.map((o, i) => `<button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_OPTION, index: i })}>${esc(desc(o))}</button>`).join("")}</div>`);
     case MSG.SELECT_CHAIN:
-      return P(`${title(p.forced ? "Tu dois activer un effet" : "Chaîner ?")}<p class="muted small" style="margin:0">Clique sur une carte pour l'activer en réponse.</p>
-        ${choiceGrid(p.selects)}<div class="menu">${p.selects.map((c, i) => `<button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_CHAIN, index: i })}'>${esc(cname(c.code))} : ${esc(desc(c.description))}</button>`).join("")}</div>
-        ${p.forced ? "" : `<button class="primary" ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_CHAIN, index: null })}'>Ne pas chaîner</button>`}`);
+      return P(p.forced ? "Tu dois activer un effet" : "Chaîner ?", "Active une carte en réponse, ou passe.",
+        `${choiceGrid(p.selects)}<div class="menu">${p.selects.map((c, i) => `<button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_CHAIN, index: i })}>${esc(cname(c.code))} : ${esc(desc(c.description))}</button>`).join("")}</div>
+        ${p.forced ? "" : `<button class="next-phase" ${busy} ${R({ type: RESP.SELECT_CHAIN, index: null })}>NE PAS CHAÎNER</button>`}`);
     case MSG.SELECT_CARD: case MSG.SELECT_TRIBUTE: {
-      const n = S.picks.length, ok = n >= p.min && n <= p.max;
-      return P(`${title(p.type === MSG.SELECT_TRIBUTE ? `Choisis ${p.min === p.max ? p.min : `${p.min} à ${p.max}`} monstre(s) à Sacrifier` : `Choisis ${p.min === p.max ? p.min : `${p.min} à ${p.max}`} carte(s)`)}
-        ${choiceGrid(p.selects, { picked: S.picks })}<div class="row"><button class="primary" ${busy} ${ok ? "" : "disabled"} data-a="confirmcards">Valider (${n})</button>
-        ${p.can_cancel ? `<button ${busy} data-a="raw" data-r='${JSON.stringify({ type: p.type === MSG.SELECT_TRIBUTE ? RESP.SELECT_TRIBUTE : RESP.SELECT_CARD, indicies: null })}'>Annuler</button>` : ""}</div>`);
+      const n = S.picks.length, ok = n >= p.min && n <= p.max, range = p.min === p.max ? p.min : `${p.min} à ${p.max}`;
+      return P(p.type === MSG.SELECT_TRIBUTE ? `Choisis ${range} monstre(s) à Sacrifier` : `Choisis ${range} carte(s)`, "",
+        `${choiceGrid(p.selects, { picked: S.picks })}<div class="btns"><button class="next-phase" ${busy} ${ok ? "" : "disabled"} data-a="confirmcards">VALIDER (${n})</button>
+        ${p.can_cancel ? `<button class="side-ghost" ${busy} ${R({ type: p.type === MSG.SELECT_TRIBUTE ? RESP.SELECT_TRIBUTE : RESP.SELECT_CARD, indicies: null })}>ANNULER</button>` : ""}</div>`);
     }
     case MSG.SELECT_UNSELECT_CARD: {
       const all = [...p.select_cards, ...p.unselect_cards];
-      return P(`${title(`Choisis des cartes (${p.min} à ${p.max})`)}<p class="muted small" style="margin:0">Les cartes déjà choisies sont entourées : clique dessus pour les retirer.</p>
-        ${choiceGrid(all, { marked: p.unselect_cards.map((_, i) => p.select_cards.length + i) })}
-        <div class="row">${p.can_finish ? `<button class="primary" ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_UNSELECT_CARD, index: null })}'>Terminer</button>` : ""}
-        ${p.can_cancel && !p.can_finish ? `<button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_UNSELECT_CARD, index: null })}'>Annuler</button>` : ""}</div>`);
+      return P(`Choisis des cartes (${p.min} à ${p.max})`, "Les cartes déjà choisies brillent : clique dessus pour les retirer.",
+        `${choiceGrid(all, { marked: p.unselect_cards.map((_, i) => p.select_cards.length + i) })}
+        <div class="btns">${p.can_finish ? `<button class="next-phase" ${busy} ${R({ type: RESP.SELECT_UNSELECT_CARD, index: null })}>TERMINER</button>` : ""}
+        ${p.can_cancel && !p.can_finish ? `<button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_UNSELECT_CARD, index: null })}>ANNULER</button>` : ""}</div>`);
     }
     case MSG.SELECT_SUM: {
       const must = p.selects_must.reduce((a, c) => a + (c.amount & 0xffff), 0);
       const sum = must + S.picks.reduce((a, i) => a + (p.selects[i].amount & 0xffff), 0);
-      return P(`${title(`Choisis des cartes : total ${p.select_max ? "d'au moins" : "de"} ${p.amount}`)}<p class="muted small" style="margin:0">Total actuel : <b>${sum}</b>${must ? ` (dont ${must} imposé)` : ""}</p>
-        ${choiceGrid(p.selects, { picked: S.picks })}<button class="primary" ${busy} data-a="confirmsum">Valider</button>`);
+      return P(`Total ${p.select_max ? "d'au moins" : "de"} ${p.amount}`, `Total actuel : ${sum}${must ? ` (dont ${must} imposé)` : ""}`,
+        `${choiceGrid(p.selects, { picked: S.picks })}<button class="next-phase" ${busy} data-a="confirmsum">VALIDER</button>`);
     }
     case MSG.SELECT_PLACE: case MSG.SELECT_DISFIELD:
-      return P(`${title(p.type === MSG.SELECT_DISFIELD ? `Choisis ${p.count} zone(s) à rendre inutilisable(s)` : `Choisis ${p.count > 1 ? p.count + " zones" : "une zone"}`)}
-        <p class="muted small" style="margin:0">Clique sur une zone en surbrillance sur le terrain (${S.picks.length}/${p.count}).</p>
-        ${places.length <= p.count ? `<button class="primary" ${busy} data-a="raw" data-r='${JSON.stringify({ type: p.type === MSG.SELECT_PLACE ? RESP.SELECT_PLACE : RESP.SELECT_DISFIELD, places: places.slice(0, p.count) })}'>Zone imposée : valider</button>` : ""}`);
+      return P(p.type === MSG.SELECT_DISFIELD ? `Choisis ${p.count} zone(s) à rendre inutilisable(s)` : `Choisis ${p.count > 1 ? p.count + " zones" : "une zone"}`,
+        `Clique sur une zone en vert sur le terrain (${S.picks.length}/${p.count}).`,
+        places.length <= p.count ? `<button class="next-phase" ${busy} ${R({ type: p.type === MSG.SELECT_PLACE ? RESP.SELECT_PLACE : RESP.SELECT_DISFIELD, places: places.slice(0, p.count) })}>ZONE IMPOSÉE : VALIDER</button>` : "");
     case MSG.SELECT_POSITION: {
       const opts = [[POS.FUA, "ATK face recto"], [POS.FUD, "DEF face recto"], [POS.FDD, "DEF face verso"], [POS.FDA, "ATK face verso"]].filter(([b]) => p.positions & b);
-      return P(`${title(`Position de « ${cname(p.code)} »`)}<div class="row">${opts.map(([b, n]) => `<button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SELECT_POSITION, position: b })}'>${n}</button>`).join("")}</div>`);
+      return P(`Position de « ${cname(p.code)} »`, "", `<div class="btns">${opts.map(([b, n]) => `<button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_POSITION, position: b })}>${n}</button>`).join("")}</div>`);
     }
-    case MSG.SELECT_COUNTER: {
-      const vals = S.picks.length === p.cards.length ? S.picks : p.cards.map(() => 0);
-      return P(`${title(`Retire ${p.count} compteur(s)`)}${p.cards.map((c, i) => `<div class="row"><span style="flex:1">${esc(cname(c.code))} (${c.count})</span><input type="number" min="0" max="${c.count}" value="${vals[i]}" data-a="counter" data-i="${i}" style="width:70px"></div>`).join("")}
-        <button class="primary" ${busy} data-a="confirmcounter">Valider</button>`);
-    }
+    case MSG.SELECT_COUNTER:
+      return P(`Retire ${p.count} compteur(s)`, "", `${p.cards.map((c, i) => `<div class="btns" style="align-items:center"><span style="flex:1;font-size:12px">${esc(cname(c.code))} (${c.count})</span><input type="number" min="0" max="${c.count}" value="0" data-a="counter" data-i="${i}" style="width:70px"></div>`).join("")}
+        <button class="next-phase" ${busy} data-a="confirmcounter">VALIDER</button>`);
     case MSG.SORT_CARD: case MSG.SORT_CHAIN:
-      return P(`${title("Choisis l'ordre des cartes")}<p class="muted small" style="margin:0">Clique dans l'ordre voulu (${S.picks.length}/${p.cards.length}).</p>
-        ${choiceGrid(p.cards, { picked: S.picks })}<div class="row"><button class="primary" ${busy} ${S.picks.length === p.cards.length ? "" : "disabled"} data-a="confirmsort">Valider l'ordre</button>
-        <button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.SORT_CARD, order: null })}'>Ordre par défaut</button></div>`);
+      return P("Choisis l'ordre des cartes", `Clique dans l'ordre voulu (${S.picks.length}/${p.cards.length}).`,
+        `${choiceGrid(p.cards, { picked: S.picks })}<div class="btns"><button class="next-phase" ${busy} ${S.picks.length === p.cards.length ? "" : "disabled"} data-a="confirmsort">VALIDER L'ORDRE</button>
+        <button class="side-ghost" ${busy} ${R({ type: RESP.SORT_CARD, order: null })}>ORDRE PAR DÉFAUT</button></div>`);
     case MSG.ANNOUNCE_RACE: {
       const av = BigInt(p.available);
-      return P(`${title(`Déclare ${p.count} Type(s) de monstre`)}<div class="row">${RACES.map((n, i) => (av & (1n << BigInt(i)) ? `<button class="${S.picks.includes(i) ? "on" : ""}" data-a="pickrace" data-i="${i}">${n}</button>` : "")).join("")}</div>
-        <button class="primary" ${busy} ${S.picks.length === p.count ? "" : "disabled"} data-a="confirmrace">Valider</button>`);
+      return P(`Déclare ${p.count} Type(s) de monstre`, "", `<div class="btns">${RACES.map((n, i) => (av & (1n << BigInt(i)) ? `<button class="side-ghost ${S.picks.includes(i) ? "on" : ""}" data-a="pickrace" data-i="${i}">${n}</button>` : "")).join("")}</div>
+        <button class="next-phase" ${busy} ${S.picks.length === p.count ? "" : "disabled"} data-a="confirmrace">VALIDER</button>`);
     }
     case MSG.ANNOUNCE_ATTRIB:
-      return P(`${title(`Déclare ${p.count} Attribut(s)`)}<div class="row">${ATTRS.map(([b, n]) => (p.available & b ? `<button class="${S.picks.includes(b) ? "on" : ""}" data-a="pickattr" data-b="${b}">${n}</button>` : "")).join("")}</div>
-        <button class="primary" ${busy} ${S.picks.length === p.count ? "" : "disabled"} data-a="confirmattr">Valider</button>`);
+      return P(`Déclare ${p.count} Attribut(s)`, "", `<div class="btns">${ATTRS.map(([b, n]) => (p.available & b ? `<button class="side-ghost ${S.picks.includes(b) ? "on" : ""}" data-a="pickattr" data-b="${b}">${n}</button>` : "")).join("")}</div>
+        <button class="next-phase" ${busy} ${S.picks.length === p.count ? "" : "disabled"} data-a="confirmattr">VALIDER</button>`);
     case MSG.ANNOUNCE_NUMBER:
-      return P(`${title("Déclare un nombre")}<div class="row">${p.options.map((o, i) => `<button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.ANNOUNCE_NUMBER, value: i })}'>${Number(o)}</button>`).join("")}</div>`);
+      return P("Déclare un nombre", "", `<div class="btns">${p.options.map((o, i) => `<button class="side-ghost" ${busy} ${R({ type: RESP.ANNOUNCE_NUMBER, value: i })}>${Number(o)}</button>`).join("")}</div>`);
     case MSG.ANNOUNCE_CARD: {
       const res = S.announce.length > 1 && INDEX ? INDEX.filter((c) => c.key.includes(norm(S.announce))).slice(0, 30) : [];
       if (!INDEX) loadIndex().then(render);
-      return P(`${title("Déclare un nom de carte")}<input id="announce" value="${esc(S.announce)}" placeholder="Nom de la carte">
-        <div class="results">${res.map((c) => `<div class="r"><b>${esc(c.name)}</b><button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.ANNOUNCE_CARD, card: c.code })}'>Déclarer</button></div>`).join("")}</div>`);
+      return P("Déclare un nom de carte", "", `<input id="announce" value="${esc(S.announce)}" placeholder="Nom de la carte">
+        <div class="menu">${res.map((c) => `<button class="side-ghost" ${busy} ${R({ type: RESP.ANNOUNCE_CARD, card: c.code })}>${esc(c.name)}</button>`).join("")}</div>`);
     }
     case MSG.ROCK_PAPER_SCISSORS:
-      return P(`${title("Pierre, feuille, ciseaux")}<div class="row">${[[2, "Pierre"], [3, "Feuille"], [1, "Ciseaux"]].map(([vv, n]) => `<button ${busy} data-a="raw" data-r='${JSON.stringify({ type: RESP.ROCK_PAPER_SCISSORS, value: vv })}'>${n}</button>`).join("")}</div>`);
+      return P("Pierre, feuille, ciseaux", "", `<div class="btns">${[[2, "Pierre"], [3, "Feuille"], [1, "Ciseaux"]].map(([vv, n]) => `<button class="side-ghost" ${busy} ${R({ type: RESP.ROCK_PAPER_SCISSORS, value: vv })}>${n}</button>`).join("")}</div>`);
   }
-  return P(`<h3>Question du moteur (${p.type})</h3><p class="muted small">Cette question n'est pas encore gérée par l'interface.</p>`);
+  return P(`Question du moteur (${p.type})`, "Cette question n'est pas encore gérée par l'interface.");
 }
 
 function logLine(e, me, pname) {
-  const who = (t) => esc(pname(t)), cls = (t) => (t === me ? "me" : "op");
+  const who = (t) => `<b>${esc(pname(t))}</b>`;
   const nm = (c) => `<b>${esc(cname(c))}</b>`;
+  const item = (cls, label, html) => `<div class="feed-item ${cls}"><small>${label}</small><p>${html}</p></div>`;
   switch (e.type) {
-    case MSG.NEW_TURN: return `<div class="e turn">Tour de ${who(e.player)}</div>`;
-    case MSG.NEW_PHASE: return `<div class="e">${esc((PHASES.find(([b]) => b === PHASE_OF(e.phase)) || [0, ""])[1])} Phase</div>`;
-    case MSG.DRAW: return `<div class="e ${cls(e.player)}">${who(e.player)} pioche ${e.drawn.length} carte${e.drawn.length > 1 ? "s" : ""}${e.drawn.some((c) => c.code) ? " : " + e.drawn.map((c) => nm(c.code)).join(", ") : ""}</div>`;
-    case MSG.SUMMONING: return `<div class="e">Invocation Normale : ${nm(e.code)}</div>`;
-    case MSG.SPSUMMONING: return `<div class="e">Invocation Spéciale : ${nm(e.code)}</div>`;
-    case MSG.FLIPSUMMONING: return `<div class="e">Invocation Flip : ${nm(e.code)}</div>`;
-    case MSG.SET: return `<div class="e">${e.code ? nm(e.code) + " est Posée" : "Une carte est Posée"}</div>`;
-    case MSG.CHAINING: return `<div class="e ${cls(e.controller)}">Maillon ${e.chain_size} : ${nm(e.code)} s'active</div>`;
-    case MSG.CHAIN_NEGATED: case MSG.CHAIN_DISABLED: return `<div class="e">Maillon ${e.chain_size} annulé</div>`;
-    case MSG.DAMAGE: return `<div class="e ${cls(e.player)}">${who(e.player)} perd ${e.amount} LP</div>`;
-    case MSG.PAY_LPCOST: return `<div class="e ${cls(e.player)}">${who(e.player)} paie ${e.amount} LP</div>`;
-    case MSG.RECOVER: return `<div class="e ${cls(e.player)}">${who(e.player)} gagne ${e.amount} LP</div>`;
-    case MSG.ATTACK: { const a = F_code(e.card), t = e.target ? F_code(e.target) : null; return `<div class="e ${cls(e.card.controller)}">${a ? nm(a) : "Un monstre"} attaque ${e.target ? (t ? nm(t) : "un monstre face verso") : "directement"}</div>`; }
+    case MSG.NEW_TURN: return item("gold", "NOUVEAU TOUR", `${who(e.player)} commence son tour.`);
+    case MSG.DRAW: return item("", "PIOCHE", `${who(e.player)} pioche ${e.drawn.length} carte${e.drawn.length > 1 ? "s" : ""}${e.drawn.some((c) => c.code) ? " : " + e.drawn.map((c) => nm(c.code)).join(", ") : ""}.`);
+    case MSG.SUMMONING: return item("blue", "INVOCATION NORMALE", `${nm(e.code)} est Invoqué.`);
+    case MSG.SPSUMMONING: return item("blue", "INVOCATION SPÉCIALE", `${nm(e.code)} est Invoqué Spécialement.`);
+    case MSG.FLIPSUMMONING: return item("blue", "INVOCATION FLIP", `${nm(e.code)} est retourné.`);
+    case MSG.SET: return item("", "POSE", e.code ? `${nm(e.code)} est Posée.` : "Une carte est Posée.");
+    case MSG.CHAINING: return item("green", `EFFET ACTIVÉ · MAILLON ${e.chain_size}`, `${nm(e.code)} s'active.`);
+    case MSG.CHAIN_NEGATED: case MSG.CHAIN_DISABLED: return item("red", "ANNULATION", `Le maillon ${e.chain_size} est annulé.`);
+    case MSG.DAMAGE: return item("red", "DÉGÂTS", `${who(e.player)} perd <b>${e.amount.toLocaleString("fr-FR")} LP</b>.`);
+    case MSG.PAY_LPCOST: return item("red", "COÛT", `${who(e.player)} paie <b>${e.amount.toLocaleString("fr-FR")} LP</b>.`);
+    case MSG.RECOVER: return item("green", "SOIN", `${who(e.player)} gagne <b>${e.amount.toLocaleString("fr-FR")} LP</b>.`);
+    case MSG.ATTACK: { const a = F_code(e.card), t = e.target ? F_code(e.target) : null; return item("red", "COMBAT", `${a ? nm(a) : "Un monstre"} attaque ${e.target ? (t ? nm(t) : "un monstre face verso") : "directement"}.`); }
     case MSG.MOVE: {
       if (e.from.location === e.to.location && e.from.controller === e.to.controller) return "";
       if (e.from.location === LOC.DECK && e.to.location === LOC.HAND && !e.card) return "";
-      const what = e.card ? nm(e.card) : "Une carte";
-      return `<div class="e">${what} : ${esc(LOCN[e.from.location] || "")} → ${esc(LOCN[e.to.location] || "")}${e.to.controller !== e.from.controller && e.from.location ? ` (${who(e.to.controller)})` : ""}</div>`;
+      if (e.to.location === LOC.OVERLAY && !e.card) return "";
+      return item("", "DÉPLACEMENT", `${e.card ? nm(e.card) : "Une carte"} : ${esc(LOCN[e.from.location] || "")} → ${esc(LOCN[e.to.location] || "")}${e.to.controller !== e.from.controller && e.from.location ? ` (${who(e.to.controller)})` : ""}.`);
     }
-    case MSG.CONFIRM_CARDS: return `<div class="e">Révèle : ${e.cards.map((c) => nm(c.code)).join(", ")}</div>`;
-    case MSG.TOSS_COIN: return `<div class="e">Pile ou face : ${e.results.map((r) => (r ? "Face" : "Pile")).join(", ")}</div>`;
-    case MSG.TOSS_DICE: return `<div class="e">Dé : ${e.results.join(", ")}</div>`;
-    case MSG.WIN: return `<div class="e turn">${e.player < 2 ? who(e.player) + " remporte le duel" : "Égalité"}</div>`;
+    case MSG.CONFIRM_CARDS: return item("", "RÉVÉLATION", e.cards.map((c) => nm(c.code)).join(", "));
+    case MSG.TOSS_COIN: return item("gold", "PILE OU FACE", e.results.map((r) => (r ? "Face" : "Pile")).join(", "));
+    case MSG.TOSS_DICE: return item("gold", "DÉ", e.results.join(", "));
+    case MSG.WIN: return item("gold", "FIN DU DUEL", e.player < 2 ? `${who(e.player)} remporte le duel.` : "Égalité.");
   }
   return "";
 }
-// Code d'une carte du terrain désignée par sa position
 function F_code(lp) {
   const F = S.view.duel.field[lp.controller];
   const c = lp.location === LOC.MZONE ? F.m[lp.sequence] : lp.location === LOC.SZONE ? F.s[lp.sequence] : null;
@@ -498,40 +609,45 @@ function F_code(lp) {
 /* ---------- événements ---------- */
 let armedT;
 function arm(k) { if (S.armed === k) { S.armed = null; return true; } S.armed = k; render(); clearTimeout(armedT); armedT = setTimeout(() => { S.armed = null; render(); }, 3000); return false; }
+function copy(v, input) { navigator.clipboard.writeText(v).then(() => toast("Lien copié"), () => { if (input) input.select(); toast("Sélectionné : copie-le avec Ctrl+C"); }); }
+async function joinCode(code) {
+  code = String(code || "").trim().toUpperCase();
+  if (!S.name) return toast("Choisis d'abord un pseudo.");
+  if (code.length !== 5) return toast("Le code de salle fait 5 caractères.");
+  try { const r = await api({ action: "join", code, name: S.name, token: store.get("room-" + code) }); store.set("room-" + code, r.token); enter(r.code, r.token); } catch (e) { toast(e.message); }
+}
 const ACT = {
+  tab(el) { if (S.code) leave(); S.tab = el.dataset.t; if (S.tab !== "decks") S.editing = null; render(); window.scrollTo(0, 0); },
   async create() {
-    if (!S.name) return toast("Choisis d'abord un pseudo.");
+    if (!S.name) { S.tab = S.tab === "rooms" ? "rooms" : "play"; render(); const f = $("#pname"); if (f) f.focus(); return toast("Choisis d'abord un pseudo."); }
     try { const r = await api({ action: "create", name: S.name }); store.set("room-" + r.code, r.token); enter(r.code, r.token); } catch (e) { toast(e.message); }
   },
-  async join() {
-    const code = ($("#jcode").value || "").trim().toUpperCase();
-    if (!S.name) return toast("Choisis d'abord un pseudo.");
-    if (code.length !== 5) return toast("Le code de salle fait 5 caractères.");
-    try { const r = await api({ action: "join", code, name: S.name, token: store.get("room-" + code) }); store.set("room-" + code, r.token); enter(r.code, r.token); } catch (e) { toast(e.message); }
-  },
+  reopen(el) { const c = el.dataset.c; enter(c, store.get("room-" + c)); },
   async joinhere() {
     if (!S.name) return toast("Choisis d'abord un pseudo.");
     try { const r = await api({ action: "join", code: S.code, name: S.name }); store.set("room-" + r.code, r.token); enter(r.code, r.token); } catch (e) { toast(e.message); }
   },
-  leave,
-  copylink() { const v = $("#rlink").value; navigator.clipboard.writeText(v).then(() => toast("Lien copié"), () => { $("#rlink").select(); toast("Sélectionné : copie-le avec Ctrl+C"); }); },
-  pickdeck(el) { S.deckSel = el.dataset.id; store.set("deck-sel", S.deckSel); render(); },
+  leave() { leave(); },
+  copylink() { copy($("#rlink").value, $("#rlink")); },
+  copycode() { copy(location.origin + "/?salle=" + S.code); },
+  pickdeck(el) { S.deckSel = el.dataset.id; store.set("deck-sel", S.deckSel); S.editing = null; S.selCard = null; render(); },
   async ready() {
+    const pick = $("#deckpick"); if (pick) { S.deckSel = pick.value; store.set("deck-sel", S.deckSel); }
     const d = allDecks().find((x) => x.id === S.deckSel) || DEMO;
     try { await api({ action: "deck", code: S.code, token: S.token, deck: { name: d.name, main: d.main, extra: d.extra } }); await refresh(true); } catch (e) { toast(e.message); }
   },
-  newdeck() { S.editing = { id: "new", name: "Nouveau deck", main: [], extra: [] }; loadIndex().then(render); render(); },
-  editdeck(el) { const d = S.decks.find((x) => x.id === el.dataset.id); if (d) { S.editing = JSON.parse(JSON.stringify(d)); [...d.main, ...d.extra].forEach(text); loadIndex().then(render); render(); } },
-  canceldeck() { S.editing = null; render(); },
+  newdeck() { S.editing = { id: "new", name: "Nouveau deck", main: [], extra: [] }; S.deckSel = null; loadIndex().then(render); render(); },
   savedeck() {
     const d = S.editing; d.name = ($("#dname").value || "").trim() || "Deck sans nom";
-    if (d.id === "new") { d.id = "d" + Date.now().toString(36); S.decks.push(d); } else S.decks[S.decks.findIndex((x) => x.id === d.id)] = d;
-    saveDecks(); S.deckSel = d.id; store.set("deck-sel", d.id); S.editing = null; toast("Deck enregistré"); render();
+    const isNew = d.id === "new"; delete d.fromDemo;
+    if (isNew) { d.id = "d" + Date.now().toString(36); S.decks.push(d); } else S.decks[S.decks.findIndex((x) => x.id === d.id)] = d;
+    saveDecks(); S.deckSel = d.id; store.set("deck-sel", d.id); S.editing = null; toast("Deck sauvegardé"); render();
   },
-  deldeck() { if (!arm("del")) return toast("Clique encore pour supprimer ce deck."); S.decks = S.decks.filter((x) => x.id !== S.editing.id); saveDecks(); S.editing = null; S.deckSel = "demo"; render(); },
+  deldeck() { if (!arm("del")) return; S.decks = S.decks.filter((x) => x.id !== S.editing.id); saveDecks(); S.editing = null; S.deckSel = "demo"; render(); },
   addcard(el) {
     const c = +el.dataset.c, t = text(c), d = S.editing;
-    if ((deckCounts(d)[c] || 0) >= 3) return toast("3 exemplaires maximum.");
+    S.selCard = c;
+    if ((deckCounts(d)[c] || 0) >= 3) { render(); return toast("3 exemplaires maximum."); }
     const isExtra = t ? t.type & EXTRA_T : INDEX && (INDEX.find((x) => x.code === c) || {}).k === "x";
     (isExtra ? d.extra : d.main).push(c); render();
   },
@@ -540,8 +656,7 @@ const ACT = {
   cell(el) {
     const p = S.view.duel && S.view.duel.prompt, [c, l, s] = el.dataset.k.split(":").map(Number);
     if (p && (p.type === MSG.SELECT_PLACE || p.type === MSG.SELECT_DISFIELD)) {
-      const me = S.view.team === 1 ? 1 : 0;
-      if (!placeList(p, me).some((x) => x.player === c && x.location === l && x.sequence === s)) return toast("Choisis une zone en surbrillance.");
+      if (!placeList(p).some((x) => x.player === c && x.location === l && x.sequence === s)) return toast("Choisis une zone en vert.");
       const i = S.picks.findIndex((x) => x.player === c && x.location === l && x.sequence === s);
       if (i > -1) S.picks.splice(i, 1); else S.picks.push({ player: c, location: l, sequence: s });
       if (S.picks.length === p.count) return send({ type: p.type === MSG.SELECT_PLACE ? RESP.SELECT_PLACE : RESP.SELECT_DISFIELD, places: S.picks });
@@ -555,8 +670,8 @@ const ACT = {
     const list = w === "gy" ? F.gy : w === "ban" ? F.ban : w === "extra" ? F.extra || [] : [];
     const p = S.view.duel.prompt, acts = p ? actionsMap(p) : {};
     const l = { gy: LOC.GRAVE, ban: LOC.REMOVED, extra: LOC.EXTRA, deck: LOC.DECK }[w];
-    if (!list.filter(Boolean).length) return toast(w === "deck" ? `Deck : ${F.deck} cartes` : "Aucune carte.");
-    S.pileView = { c, w, l }; showPile(list, c, l, acts);
+    if (!list.filter(Boolean).length) return toast(w === "deck" ? `Deck : ${F.deck} cartes` : w === "extra" && c !== (S.view.team === 1 ? 1 : 0) ? `Extra Deck adverse : ${F.extraCount} cartes` : "Aucune carte.");
+    showPile(list, c, l, acts);
   },
   doact(el) { const a = (actionsMap(S.view.duel.prompt)[S.focus] || [])[+el.dataset.i]; if (a) send(a.resp); },
   unfocus() { S.focus = null; render(); },
@@ -582,14 +697,14 @@ const ACT = {
   confirmattr() { send({ type: RESP.ANNOUNCE_ATTRIB, attributes: S.picks }); },
   async surrender() { if (!arm("surrender")) return; try { await api({ action: "surrender", code: S.code, token: S.token }); await refresh(); } catch (e) { toast(e.message); } },
   async rematch() { try { await api({ action: "rematch", code: S.code, token: S.token }); S.log = []; S.logEnd = 0; await refresh(true); } catch (e) { toast(e.message); } },
-  closepile() { S.pileView = null; $("#pilebox") && $("#pilebox").remove(); },
+  closepile() { const b = $("#pilebox"); if (b) b.remove(); },
 };
 function showPile(list, c, l, acts) {
-  const old = $("#pilebox"); if (old) old.remove();
+  ACT.closepile();
   const box = document.createElement("div");
-  box.id = "pilebox"; box.className = "panel"; box.style.cssText = "position:fixed;inset:auto 16px 16px 16px;max-height:70vh;overflow:auto;z-index:40;box-shadow:0 -12px 40px rgba(0,0,0,.6)";
+  box.id = "pilebox"; box.className = "side-card pilebox";
   const title = { [LOC.GRAVE]: "Cimetière", [LOC.REMOVED]: "Cartes bannies", [LOC.EXTRA]: "Extra Deck" }[l];
-  box.innerHTML = `<div class="top"><h3>${title} (${list.filter(Boolean).length})</h3><button class="ghost" data-a="closepile">✕</button></div>
+  box.innerHTML = `<div class="turn-heading"><strong>${title.toUpperCase()} (${list.filter(Boolean).length})</strong><button class="side-ghost" data-a="closepile" aria-label="Fermer">${icon("x", 14)}</button></div>
     <div class="choices">${list.map((card, s) => (card ? `<div class="choice"><div class="card ${acts[key(c, l, s)] ? "act" : ""}" data-a="pilecard" data-k="${key(c, l, s)}" tabindex="0">${face(card.code)}</div><small>${esc(card.code ? cname(card.code) : "face verso")}</small></div>` : "")).join("")}</div>`;
   document.body.appendChild(box);
 }
@@ -598,31 +713,34 @@ ACT.pilecard = (el) => { S.focus = el.dataset.k; ACT.closepile(); render(); };
 function importYdk(txt) {
   const { main, extra } = parseYdk(txt || "");
   if (!main.length && !extra.length) return toast("Aucune carte trouvée dans ce fichier.");
-  S.editing.main = main; S.editing.extra = extra; [...main, ...extra].forEach(text);
+  ensureEditing(); S.editing.main = main; S.editing.extra = extra; [...main, ...extra].forEach(text);
   toast(`${main.length} + ${extra.length} cartes importées`); render();
 }
 
 document.addEventListener("click", (e) => {
-  const cardEl = e.target.closest(".hand .card[data-key], .hand.opp .card");
-  if (cardEl && cardEl.dataset.key) { S.focus = cardEl.dataset.key; render(); return; }
+  const cardEl = e.target.closest(".player-cards .card[data-key]");
+  if (cardEl) { S.focus = cardEl.dataset.key; render(); return; }
   const el = e.target.closest("[data-a]"); if (!el || el.tagName === "FORM" || el.tagName === "INPUT") return;
   const f = ACT[el.dataset.a]; if (f) { e.preventDefault(); f(el); }
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") { if ($("#pilebox")) ACT.closepile(); else if (S.focus) ACT.unfocus(); }
-  if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[tabindex]")) { e.preventDefault(); e.target.click(); }
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[tabindex]") && e.target.tagName !== "INPUT") { e.preventDefault(); e.target.click(); }
 });
 document.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (e.target.dataset.a === "joinform") return joinCode($("#jcode").value);
   if (e.target.dataset.a === "chat") { const v = ($("#chatin").value || "").trim(); if (!v) return; $("#chatin").value = ""; try { await api({ action: "chat", code: S.code, token: S.token, text: v }); refresh(); } catch (err) { toast(err.message); } }
 });
 document.addEventListener("input", (e) => {
-  if (e.target.id === "pname") { S.name = e.target.value.trim().slice(0, 24); store.set("name", S.name); }
-  if (e.target.id === "dsearch") { S.search = e.target.value; render(); }
+  if (e.target.id === "pname") { S.name = e.target.value.trim().slice(0, 24); store.set("name", S.name); const u = document.querySelector(".user-area strong"); if (u) u.textContent = S.name || "Sans pseudo"; const a = document.querySelector(".avatar"); if (a) a.textContent = initials(S.name); }
+  if (e.target.id === "dsearch") { S.search = e.target.value; if (!INDEX) loadIndex().then(render); render(); }
   if (e.target.id === "announce") { S.announce = e.target.value; render(); }
+  if (e.target.id === "dname" && S.editing) S.editing.name = e.target.value;
 });
 document.addEventListener("change", (e) => {
   if (e.target.id === "ydk" && e.target.files[0]) { const r = new FileReader(); r.onload = () => importYdk(r.result); r.readAsText(e.target.files[0]); }
+  if (e.target.id === "deckpick") { S.deckSel = e.target.value; store.set("deck-sel", S.deckSel); }
 });
 
 /* ---------- démarrage ---------- */

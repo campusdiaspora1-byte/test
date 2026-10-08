@@ -125,7 +125,7 @@ function zone(r, team, loc, viewer) {
 export function fieldFor(r, viewer) {
   const f = r.lib.duelQueryField(r.h);
   return [0, 1].map((team) => ({
-    lp: f.players[team].lp,
+    lp: Math.max(0, f.players[team].lp | 0), // le moteur renvoie un entier non signé : sous 0, il « déborde »
     hand: zone(r, team, L.HAND, viewer),
     deck: f.players[team].deck_size ?? r.lib.duelQueryCount(r.h, team, L.DECK),
     extra: team === viewer ? zone(r, team, L.EXTRA, viewer) : zone(r, team, L.EXTRA, viewer).map((c) => (c && c.code ? c : null)).filter(Boolean),
@@ -192,7 +192,7 @@ export function viewFor(r, viewer, from = 0) {
   }
   return {
     field: fieldFor(r, viewer),
-    chain: (f.chain || []).map((c) => visibleCard({ ...c, ...(c.triggering_card || {}) }, viewer)),
+    chain: (f.chain || []).map((c) => ({ code: c.code, controller: c.controller, location: c.location, sequence: c.sequence })), // une carte activée est publique
     waitingFor: r.pending ? r.pending.player : null,
     prompt, hint, ended: r.ended, winner: r.winner,
     log: logFor(r, viewer, from), logEnd: r.messages.length,
