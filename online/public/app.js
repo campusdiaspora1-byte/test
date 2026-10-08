@@ -121,6 +121,7 @@ async function refresh(force = false) {
     if (!r.ok) { if (r.status === 404) { toast(j.error); leave(); } return; }
     if (j.same) return;
     const prevStatus = S.view && S.view.status;
+    const prevLast = S.log.length ? S.log[S.log.length - 1].i : -1, animate = !!(S.view && S.view.duel), before = animate ? snapRects() : null;
     if (j.duel) {
       if (j.duel.log.length && j.duel.log[0].i < S.logEnd) S.log = []; // nouvelle partie
       if (prevStatus !== "duel" && j.status === "duel" && S.logEnd > j.duel.logEnd) S.log = [];
@@ -130,6 +131,7 @@ async function refresh(force = false) {
     if (j.duel && S.view && S.view.duel && JSON.stringify(j.duel.prompt) !== JSON.stringify(S.view.duel.prompt)) { S.picks = []; S.focus = null; }
     S.view = j; S.version = j.version;
     render();
+    if (animate && j.duel) playAnims(S.log.filter((e) => e.i > prevLast), before);
     autoAnswer();
   } catch (e) { /* réseau : on réessaiera */ } finally {
     fetching = false;
@@ -412,7 +414,7 @@ function viewDuel() {
   const mRow = (ctrl, flip) => { const idx = flip ? [4, 3, 2, 1, 0] : [0, 1, 2, 3, 4]; const r = [zone(ctrl, LOC.SZONE, 5), ...idx.map((i) => zone(ctrl, LOC.MZONE, i)), pile(ctrl, "gy")]; return (flip ? r.reverse() : r).join(""); };
   const emz = (side) => { const mine = side === 0 ? 5 : 6, theirs = side === 0 ? 6 : 5; return F[op].m[theirs] ? zone(op, LOC.MZONE, theirs, "emz") : zone(me, LOC.MZONE, mine, "emz"); };
   const hand = F[me].hand.filter(Boolean).map((c, i) => { const k = key(me, LOC.HAND, i); return `<div class="hand-card ${S.focus === k ? "selected" : ""}">${cardHTML({ ...c, pos: POS.FUA }, { cls: acts[k] ? "act" : "", key: k })}</div>`; }).join("");
-  const oppHand = F[op].hand.filter(Boolean).map((c, i) => (c.code ? cardHTML({ ...c, pos: POS.FUA }, { key: key(op, LOC.HAND, i) }) : `<div class="back"></div>`)).join("");
+  const oppHand = F[op].hand.filter(Boolean).map((c, i) => (c.code ? cardHTML({ ...c, pos: POS.FUA }, { key: key(op, LOC.HAND, i) }) : `<div class="back" data-key="${key(op, LOC.HAND, i)}"></div>`)).join("");
 
   let turnPl = null, phase = 0, turnNo = 0;
   for (const e of S.log) { if (e.type === MSG.NEW_TURN) { turnPl = e.player; turnNo++; phase = 1; } if (e.type === MSG.NEW_PHASE) phase = PHASE_OF(e.phase); }
@@ -420,7 +422,7 @@ function viewDuel() {
 
   const player = (t, top) => `<div class="arena-player ${top ? "top-player" : "bottom-player"}">
     <div class="player-name"><span class="presence ${t === me ? "" : "rival"}"></span><strong>${esc(pname(t))}</strong>${turnPl === t ? `<i>SON TOUR</i>` : "<span></span>"}<small>${t === me ? (v.seat ? "TOI" : "JOUEUR") : "ADVERSAIRE"}</small></div>
-    <div class="arena-lp"><small>LIFE POINTS</small><strong>${F[t].lp.toLocaleString("fr-FR")}</strong><i><b style="width:${Math.max(0, Math.min(100, F[t].lp / 80))}%"></b></i></div>
+    <div class="arena-lp" data-lp="${t}"><small>LIFE POINTS</small><strong>${F[t].lp.toLocaleString("fr-FR")}</strong><i><b style="width:${Math.max(0, Math.min(100, F[t].lp / 80))}%"></b></i></div>
     <button class="banished" data-a="pile" data-c="${t}" data-w="ban">BANNIES <span>${F[t].ban.filter(Boolean).length}</span></button></div>`;
 
   const board = `<div class="arena-panel" aria-label="Terrain">
@@ -610,6 +612,106 @@ function F_code(lp) {
   const F = S.view.duel.field[lp.controller];
   const c = lp.location === LOC.MZONE ? F.m[lp.sequence] : lp.location === LOC.SZONE ? F.s[lp.sequence] : null;
   return c && c.code;
+}
+
+
+/* ---------- animations (pioche, déplacements, destruction, attaque, dégâts) ---------- */
+const reduceMotion = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Position à l'écran de chaque zone, pile, carte en main et barre de LP
+function snapRects() {
+  const R = {};
+  document.querySelectorAll(".yod-game [data-k], .yod-game .board-zone[data-a=pile], .yod-game [data-key], .yod-game [data-lp]").forEach((el) => {
+    const k = el.dataset.lp != null ? "lp:" + el.dataset.lp : el.dataset.a === "pile" ? `pile:${el.dataset.c}:${el.dataset.w}` : el.dataset.k || el.dataset.key;
+    if (k && !R[k]) R[k] = el.getBoundingClientRect();
+  });
+  return R;
+}
+function locKey(c, loc, seq) {
+  if (loc & LOC.OVERLAY) return `${c}:${LOC.MZONE}:${seq}`;
+  if (loc & LOC.MZONE) return `${c}:${LOC.MZONE}:${seq}`;
+  if (loc & LOC.SZONE) return `${c}:${LOC.SZONE}:${seq}`;
+  if (loc & LOC.HAND) return `${c}:${LOC.HAND}:${seq}`;
+  const w = loc & LOC.GRAVE ? "gy" : loc & LOC.REMOVED ? "ban" : loc & LOC.EXTRA ? "extra" : loc & LOC.DECK ? "deck" : null;
+  return w ? `pile:${c}:${w}` : null;
+}
+const rectOf = (map, k) => (k && map[k] && map[k].width ? map[k] : null);
+function ghost(code, r) {
+  const g = document.createElement("div");
+  g.className = "ghost";
+  g.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+  g.innerHTML = code ? face(code) : `<div class="back"></div>`;
+  document.body.appendChild(g);
+  return g;
+}
+const centerShift = (a, b) => [b.left + b.width / 2 - (a.left + a.width / 2), b.top + b.height / 2 - (a.top + a.height / 2)];
+function fly(code, from, to, ms = 460) {
+  const g = ghost(code, from), [dx, dy] = centerShift(from, to), sc = to.width / from.width || 1;
+  return g.animate([{ transform: "translate(0,0) scale(1)", opacity: 1 }, { offset: .7, opacity: 1 }, { transform: `translate(${dx}px,${dy}px) scale(${sc})`, opacity: .2 }], { duration: ms, easing: "cubic-bezier(.4,.1,.2,1)" }).finished.then(() => g.remove());
+}
+function burst(r, cls = "") {
+  const b = document.createElement("div");
+  b.className = "fx-ring " + cls;
+  b.style.cssText = `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px`;
+  document.body.appendChild(b);
+  return b.animate([{ transform: "translate(-50%,-50%) scale(.3)", opacity: .95 }, { transform: "translate(-50%,-50%) scale(1.6)", opacity: 0 }], { duration: 520, easing: "ease-out" }).finished.then(() => b.remove());
+}
+function floatText(r, text, cls) {
+  const f = document.createElement("div");
+  f.className = "fx-float " + cls; f.textContent = text;
+  f.style.cssText = `left:${r.left + r.width / 2}px;top:${r.top}px`;
+  document.body.appendChild(f);
+  return f.animate([{ transform: "translate(-50%,0)", opacity: 0 }, { offset: .15, opacity: 1 }, { transform: "translate(-50%,-46px)", opacity: 0 }], { duration: 1100, easing: "ease-out" }).finished.then(() => f.remove());
+}
+function shake(el) { if (el) el.animate([{ transform: "translateX(0)" }, { transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "translateX(-3px)" }, { transform: "translateX(0)" }], { duration: 320 }); }
+async function destroy(code, r) {
+  const g = ghost(code, r);
+  await g.animate([{ transform: "scale(1) rotate(0)", filter: "brightness(1)" }, { offset: .4, transform: "scale(1.08) rotate(-3deg)", filter: "brightness(1.8) sepia(1) hue-rotate(-40deg) saturate(4)" },
+    { transform: "scale(1.25) rotate(4deg)", filter: "brightness(2.2) saturate(5)", opacity: 0 }], { duration: 420, easing: "ease-in" }).finished;
+  g.remove();
+}
+async function lunge(fromKey, toRect) {
+  const el = document.querySelector(`.yod-game [data-k="${fromKey}"] .card`);
+  if (!el || !toRect) return;
+  const [dx, dy] = centerShift(el.getBoundingClientRect(), toRect);
+  el.style.zIndex = 20; el.style.position = "relative";
+  await el.animate([{ transform: el.classList.contains("def") ? "rotate(90deg) scale(.69)" : "none" }, { offset: .45, transform: `translate(${dx * .78}px,${dy * .78}px) scale(1.12)` }, { transform: el.classList.contains("def") ? "rotate(90deg) scale(.69)" : "none" }], { duration: 520, easing: "cubic-bezier(.5,0,.3,1)" }).finished;
+  el.style.zIndex = "";
+}
+let animQueue = Promise.resolve();
+function playAnims(events, before) {
+  if (!before || reduceMotion() || !events.length) return;
+  events = events.slice(-12); // une reconnexion ne rejoue pas toute la partie
+  const after = snapRects(), me = S.view.team === 1 ? 1 : 0;
+  const pos = (k) => rectOf(after, k) || rectOf(before, k);
+  const steps = [];
+  for (const e of events) {
+    if (e.type === MSG.DRAW) {
+      const deck = pos(`pile:${e.player}:deck`), n = (S.view.duel.field[e.player].hand || []).filter(Boolean).length;
+      e.drawn.forEach((c, j) => { const to = rectOf(after, `${e.player}:${LOC.HAND}:${n - e.drawn.length + j}`); if (deck && to) steps.push(() => fly(e.player === me ? c.code : 0, deck, to, 420)); });
+    } else if (e.type === MSG.MOVE) {
+      const f = e.from, t = e.to;
+      if (f.location === t.location && f.controller === t.controller && f.sequence === t.sequence) continue;
+      const from = rectOf(before, locKey(f.controller, f.location, f.sequence)) || pos(locKey(f.controller, f.location, f.sequence));
+      const to = pos(locKey(t.controller, t.location, t.sequence));
+      if (!from || !to) continue;
+      const onField = (l) => l & (LOC.MZONE | LOC.SZONE);
+      if (onField(f.location) && t.location & LOC.GRAVE) steps.push(async () => { await destroy(e.card, from); await fly(e.card, from, to, 380); });
+      else steps.push(() => fly(e.card, from, to));
+    } else if (e.type === MSG.SUMMONING || e.type === MSG.SPSUMMONING || e.type === MSG.FLIPSUMMONING) {
+      const r = pos(locKey(e.controller, e.location, e.sequence)); if (r) steps.push(() => burst(r, "gold"));
+    } else if (e.type === MSG.CHAINING) {
+      const r = pos(locKey(e.controller, e.location, e.sequence)); if (r) steps.push(() => burst(r, "green"));
+    } else if (e.type === MSG.ATTACK) {
+      const a = e.card, t = e.target;
+      const target = t ? pos(locKey(t.controller, t.location, t.sequence)) : pos(`lp:${1 - a.controller}`);
+      steps.push(async () => { await lunge(locKey(a.controller, a.location, a.sequence), target); if (target) burst(target, "red"); });
+    } else if (e.type === MSG.DAMAGE || e.type === MSG.PAY_LPCOST || e.type === MSG.RECOVER) {
+      const r = pos(`lp:${e.player}`); if (!r) continue;
+      const heal = e.type === MSG.RECOVER;
+      steps.push(() => { shake(document.querySelector(`.yod-game [data-lp="${e.player}"]`)); return floatText(r, `${heal ? "+" : "−"}${e.amount.toLocaleString("fr-FR")}`, heal ? "heal" : "hurt"); });
+    }
+  }
+  for (const step of steps) animQueue = animQueue.then(() => Promise.race([step(), new Promise((r) => setTimeout(r, 1200))])).catch(() => {});
 }
 
 /* ---------- événements ---------- */
