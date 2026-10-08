@@ -328,12 +328,24 @@ const sample = () => ({
 let collection = [];
 try { collection = JSON.parse(localStorage.getItem(STORE_KEY) || "[]"); } catch (e) { collection = []; }
 if (!Array.isArray(collection)) collection = [];
+// Classeur stocké dans IndexedDB (plusieurs centaines de Mo) ; localStorage (~5 Mo) ne sert qu'en secours.
+function idb() {
+  return new Promise((res, rej) => {
+    try { const r = indexedDB.open("ygo-atelier", 1); r.onupgradeneeded = () => r.result.createObjectStore("kv"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }
+    catch (e) { rej(e); }
+  });
+}
+async function idbGet() { const db = await idb(); return new Promise((res, rej) => { const q = db.transaction("kv").objectStore("kv").get(STORE_KEY); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+async function idbSet(v) { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction("kv", "readwrite"); t.objectStore("kv").put(v, STORE_KEY); t.oncomplete = () => res(true); t.onerror = () => rej(t.error); }); }
 let card = collection.length ? structuredClone(collection[0]) : sample();
 const layers = { background: true, texture: true, boxes: true, illustration: true, text: true, cut: false };
 let artImg = null;
 
 const $ = (id) => document.getElementById(id);
-function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(collection)); return true; } catch (e) { return false; } }
+async function persist() {
+  try { await idbSet(structuredClone(collection)); try { localStorage.removeItem(STORE_KEY); } catch (e) {} return true; }
+  catch (e) { try { localStorage.setItem(STORE_KEY, JSON.stringify(collection)); return true; } catch (e2) { return false; } }
+}
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2200); }
 
 /* ================= Règles ================= */
@@ -805,7 +817,7 @@ $("artClear").addEventListener("click", () => { card.art = ""; loadArt(); });
 $("btnSave").addEventListener("click", () => {
   const i = collection.findIndex((c) => c.id === card.id); const copy = structuredClone(card);
   if (i > -1) collection[i] = copy; else collection.unshift(copy);
-  renderColl(); toast(persist() ? "Carte enregistrée dans le classeur" : "Enregistrée pour cette session (stockage du navigateur indisponible)");
+  renderColl(); persist().then((ok) => toast(ok ? "Carte enregistrée dans le classeur" : "Enregistrée pour cette session (stockage du navigateur indisponible)"));
 });
 $("btnNew").addEventListener("click", () => { const s = sample(); card = { ...s, name: "Nouvelle carte", text: "", frame: "effect", hasEffect: true, attribute: "DARK", mtype: "Warrior", level: 4, atk: "1800", def: "1200", setId: "AMI-FR001", passcode: "", copyright: "Partie amicale" }; syncForm(); loadArt(); });
 $("btnDup").addEventListener("click", () => { card = { ...structuredClone(card), id: uid(), name: card.name + " (copie)" }; syncForm(); draw(); toast("Copie créée, pensez à l'enregistrer"); });
@@ -850,6 +862,10 @@ $("importFile").addEventListener("change", (e) => {
 });
 
 syncForm(); loadArt();
+idbGet().then((saved) => {
+  if (Array.isArray(saved) && saved.length) { collection = saved; card = structuredClone(collection[0]); syncForm(); loadArt(); }
+  else if (collection.length) persist(); // migre l'ancien classeur localStorage
+}).catch(() => {});
 if (document.fonts?.load) Promise.all(["700 50px 'Spectral SC'", "400 19px Spectral", "italic 400 19px Spectral", "28px Kalam"].map((f) => document.fonts.load(f))).then(draw, draw);
 })();
 </script>
