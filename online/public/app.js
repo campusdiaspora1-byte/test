@@ -32,7 +32,7 @@ const store = {
 const HM = (n) => 711000000 + n;
 const DEMO = { id: "demo", name: "Hueco Mundo · démo", main: [1, 1, 1, 6, 6, 6, 4, 9, 9, 11, 11, 13, 13, 20, 20, 20, 5, 5, 5, 22, 22, 14, 16, 18, 2, 2, 2, 3, 3, 3, 7, 7, 8, 21, 23, 24, 25, 26, 26, 8].map(HM), extra: [10, 12, 15, 17, 19].map(HM) };
 const S = {
-  fmt: store.get("fmt", "amical"),
+  fmt: store.get("fmt", "amical"), flat: store.get("flat", false),
   name: store.get("name", ""), decks: store.get("decks", []), deckSel: store.get("deck-sel", "demo"),
   code: null, token: null, view: null, version: 0, log: [], logEnd: 0, busy: false, picks: [], focus: null, editing: null, search: "", announce: "",
   tab: "play", selCard: null, rooms: store.get("rooms", []),
@@ -584,6 +584,7 @@ function viewDuel() {
   </aside>
   <nav class="game-rail" aria-label="Outils du duel">
     <button class="rail-btn ${S.drawer ? "on" : ""}" data-a="drawer" aria-label="Journal du duel" aria-expanded="${!!S.drawer}">${icon("cards", 18)}<span>JOURNAL</span>${unread && !S.drawer ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}</button>
+    <button class="rail-btn ${S.flat ? "" : "on"}" data-a="tilt" aria-pressed="${!S.flat}" aria-label="Vue en perspective">${icon("spark", 18)}<span>3D</span></button>
     <button class="rail-btn" data-a="leave" aria-label="Quitter vers l'accueil">${icon("chevron", 18)}<span>ACCUEIL</span></button>
   </nav>`;
   const lastLine = feed.length ? feed[feed.length - 1] : "";
@@ -599,7 +600,7 @@ function viewDuel() {
     : S.focus ? `<div class="overlay" data-a="unfocus" role="dialog" aria-modal="true"><div class="popup" data-a="noop">${viewFocus(acts)}</div></div>`
     : d.ended && !S.endSeen ? `<div class="overlay" data-a="endseen" role="dialog" aria-modal="true"><div class="popup" data-a="noop">${viewEnd(d, me, pname)}</div></div>` : "";
   const portrait = window.matchMedia("(orientation: portrait) and (max-width: 760px)").matches && !S.portraitOk;
-  return `<section class="yod-game ${S.drawer ? "drawer-open" : ""}">
+  return `<section class="yod-game ${S.drawer ? "drawer-open" : ""} ${S.flat ? "" : "tilt"}">
     <header class="game-header"><button class="back-lobby" data-a="leave">${icon("chevron", 16)}ACCUEIL</button>
       <div class="room-identity"><small>SALLE</small><strong>${esc(v.code)}</strong></div>${v.seat ? "" : `<span class="spectator">SPECTATEUR</span>`}
       ${turnInfo}
@@ -918,6 +919,7 @@ const ACT = {
   copylink() { copy($("#rlink").value, $("#rlink")); },
   copycode() { copy(location.origin + "/?salle=" + S.code); },
   drawer() { S.drawer = !S.drawer; render(); if (S.drawer) { const lg = $("#log"); if (lg) lg.scrollTop = lg.scrollHeight; } },
+  tilt() { S.flat = !S.flat; store.set("flat", S.flat); render(); },
   endseen() { S.endSeen = true; render(); },
   endshow() { S.endSeen = false; render(); },
   portraitok() { S.portraitOk = true; render(); },

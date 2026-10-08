@@ -359,7 +359,7 @@ textarea { width: 100%; min-height: 110px; font: 500 12px/1.4 ui-monospace, Menl
 .game-rail { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 4px; z-index: 41; }
 .rail-btn { position: relative; width: 52px; min-height: 52px; display: grid; place-items: center; gap: 2px; padding: 6px 0; border: 1px solid #2c3a52; border-radius: 8px; background: #0e1626; color: #b9b2a5; font: 700 8.5px var(--font-ui); letter-spacing: .6px; }
 .rail-btn:hover, .rail-btn.on { border-color: var(--gold-dark); color: var(--gold); }
-.rail-btn:nth-child(2) .icon { transform: rotate(180deg); }
+.rail-btn[data-a="leave"] .icon { transform: rotate(180deg); }
 .rail-btn b { position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; display: grid; place-items: center; background: var(--red); color: #fff; font: 800 10px var(--font-ui); }
 .arena-wrap { grid-column: 2; grid-row: 1; min-width: 0; min-height: 0; display: flex; justify-content: center; align-items: flex-start; position: relative; }
 .arena-wrap .arena-panel { width: max-content; max-width: 100%; }
@@ -445,3 +445,20 @@ textarea { width: 100%; min-height: 110px; font: 500 12px/1.4 ui-monospace, Menl
   .yod-game .game-layout { height: auto; padding-bottom: 150px; }
   .header-ticker, .yod-game .room-identity small { display: none; }
 }
+
+/* ---------- vue en perspective (fausse 3D) : le terrain est une table vue depuis sa place ---------- */
+.yod-game.tilt { --tilt: 24deg; --persp: calc(var(--ch) * 14); }
+.yod-game.tilt .compact-board { transform: perspective(var(--persp)) rotateX(var(--tilt)); transform-origin: 50% 62%; margin-top: calc(var(--ch) * -.22); margin-bottom: calc(var(--ch) * -.1); }
+.yod-game.tilt .board-zone { background: linear-gradient(180deg, rgba(34,52,84,.55), rgba(20,32,56,.55)); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), inset 0 -10px 18px rgba(0,0,0,.25); }
+/* cartes posées : épaisseur et ombre portée vers le joueur */
+.yod-game.tilt .compact-board .card { box-shadow: 0 1px 0 rgba(255,255,255,.12) inset, 0 3px 0 #1a1208, 0 9px 14px rgba(0,0,0,.6); }
+.yod-game.tilt .compact-board .card.act { transform: translateY(-4px); }
+/* lumière qui tombe sur la table et bord de table */
+.yod-game.tilt .arena-panel { background: radial-gradient(ellipse 70% 55% at 50% 62%, rgba(68,104,160,.22), transparent 70%), linear-gradient(rgba(12,22,40,.97), rgba(9,17,32,.99)); }
+.yod-game.tilt .compact-board::after { content: ""; position: absolute; left: -2%; right: -2%; bottom: -12px; height: 14px; border-radius: 0 0 10px 10px; background: linear-gradient(#1b2a45, #0b1220); box-shadow: 0 12px 26px rgba(0,0,0,.6); z-index: -1; }
+/* les mains restent à plat ; la tienne passe devant la table */
+.yod-game.tilt .player-cards { position: relative; z-index: 5; }
+.yod-game.tilt .player-cards .card { box-shadow: 0 10px 22px rgba(0,0,0,.65); }
+.yod-game.tilt .opponent-cards { transform: perspective(var(--persp)) rotateX(calc(var(--tilt) * .5)) scale(.92); }
+@media (orientation: landscape) and (max-height: 520px) { .yod-game.tilt { --tilt: 18deg; } .yod-game.tilt .compact-board { margin-top: calc(var(--ch) * -.12); margin-bottom: 0; } }
+@media (prefers-reduced-motion: reduce) { .yod-game.tilt .compact-board .card.act { transform: none; } }
