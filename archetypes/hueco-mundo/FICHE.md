@@ -84,7 +84,7 @@ Magie Jeu-Rapide « Cero » (FR003).
 | HMUN-FR023 | Ira - La Rage de l'Espada Cero | Magie Jeu-Rapide | Terminée |
 | HMUN-FR024 | Santa Teresa - Le Hierro de la Quinta Espada | Piège Normal | Terminée |
 | HMUN-FR025 | Amor - La Possession de la Séptima Espada | Piège Normal | Terminée |
-| HMUN-FR026 | Glotonería - Le Festin de la Novena Espada | Magie Normale | Texte validé · visuel à venir |
+| HMUN-FR026 | Glotonería - Le Festin de la Novena Espada | Magie Normale | Terminée |
 | HMUN-FR013 | Lilynette Gingerbuck - La Fracción du Premier Espada | Monstre à Effet, Niv. 4, 1000/1000 | Terminée (visuel basse résolution, 288×432) |
 | HMUN-FR002 | Las Noches - Palais du Hueco Mundo | Magie de Terrain | Terminée |
 | HMUN-FR003 | Cero Oscuras - Le Cero Noir du Désespoir | Magie Jeu-Rapide | Terminée |
