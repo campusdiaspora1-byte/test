@@ -33,5 +33,8 @@ Pour régénérer `index.html` après avoir modifié la source :
 réel, chacun sur son appareil. Les règles ne sont pas automatisées : comme sur une vraie table, les joueurs déplacent
 leurs cartes et appliquent les effets ensemble. La main, le Deck et l'Extra Deck restent cachés à l'adversaire.
 
-- Decks : cartes de l'atelier (avec visuels) + cartes officielles ajoutées par leur nom (cartes texte).
+- Decks : cartes de l'atelier (avec visuels) + les 14 257 cartes officielles OCG/TCG (texte français, sans image),
+  cherchables par nom français ou anglais, et import de decks `.ydk`.
+- Base officielle : `python3 tools/build_official.py fr-FR/cards.cdb en-US/cards.cdb`, à partir de
+  [mycard/ygopro-database](https://github.com/mycard/ygopro-database) (fichiers `locales/*/cards.cdb`).
 - Pour mettre à jour les cartes de l'arène après un nouvel archétype : `python3 tools/build_game.py archetypes/<dossier>`.

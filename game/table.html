@@ -89,6 +89,8 @@ h2 { font-size: 20px; }
 .badge.mats { left: -5px; right: auto; background: #b48bcf; color: #12081c; }
 .back { width: 100%; height: 100%; background: radial-gradient(ellipse 34% 26% at 50% 50%, #e9c46a 0 18%, #8a4b1d 19% 44%, #3d1f0c 45% 70%, #1e0f06 71%); border: 2px solid #2a1709; border-radius: 3px; }
 .ttile { width: 100%; height: 100%; padding: 4px; display: flex; align-items: center; justify-content: center; text-align: center; font: 700 calc(var(--cw) * .14)/1.1 var(--font-ui); color: #10131c; overflow: hidden; overflow-wrap: anywhere; border: 3px solid rgba(0, 0, 0, .35); }
+.k-n { background: #e6c878; } .k-e { background: #e8934f; } .k-r { background: #7fa6dc; } .k-fu { background: #a585c9; } .k-sy { background: #ececec; }
+.k-xy { background: #2c2c30; color: #f2f2f2; } .k-l { background: #3a73bd; color: #f2f2f2; }
 .k-m { background: #e8934f; } .k-s { background: #3db497; } .k-t { background: #cf6c9a; } .k-x { background: #9a7ac0; } .k-tok { background: #b9b9b9; }
 .pilecount { position: absolute; inset: auto 0 2px 0; text-align: center; font: 600 11px/1 var(--font-num); color: #fff; text-shadow: 0 1px 2px #000; }
 .hand { width: 100%; display: flex; gap: 6px; overflow-x: auto; padding: 6px 2px 8px; min-height: calc(var(--ch) + 16px); justify-content: safe center; }
@@ -132,6 +134,12 @@ h2 { font-size: 20px; }
 .dlist .l span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dlist .l button { padding: 3px 7px; }
 .ok { color: var(--me); } .bad { color: var(--opp); }
+.ores { display: grid; gap: 4px; max-height: 420px; overflow-y: auto; }
+.ores .r { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #0e1630; }
+.ores .sw { width: 10px; height: 30px; border-radius: 2px; }
+.ores .t { min-width: 0; } .ores .t b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.ores .t small { color: var(--dim); }
+.ores .cnt { grid-template-columns: 28px 22px 28px; }
 .addtxt { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 6px; }
 @media (max-width: 560px) { .addtxt { grid-template-columns: minmax(0, 1fr) auto; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -165,11 +173,29 @@ const S = {
   unsub: [], pubW: null, privW: null, gameW: null, deckW: null, readOnly: false,
 };
 let CAT = {}, CATLIST = [];
+const IDX = new Map(), ALIAS = {}, DETAIL = {}, CHUNK = {};
+let IDXLIST = [], idxReady = false;
+const norm = (t) => String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+async function loadIndex() {
+  try {
+    const d = await (await fetch("ygo/index.json")).json();
+    Object.assign(ALIAS, d.alias || {});
+    IDXLIST = d.cards.map(([id, n, en, k, f, field]) => { const o = { cid: "ygo:" + id, id, name: n, en: en || "", kind: k, frame: f, field: !!field, key: norm(n + " " + (en || "")) }; IDX.set(o.cid, o); return o; });
+    idxReady = true; render(); if (S.sheet) renderSheet();
+  } catch (e) { idxReady = false; }
+}
+function detail(cid) {
+  if (DETAIL[cid] || !cid.startsWith("ygo:")) return DETAIL[cid] || null;
+  const id = +cid.slice(4), n = id % 100;
+  if (!CHUNK[n]) CHUNK[n] = fetch(`ygo/d/${n}.json`).then((r) => r.json()).then((ch) => { for (const k in ch) DETAIL["ygo:" + k] = { line: ch[k][0], stats: ch[k][1], text: ch[k][2] }; if (S.sheet) renderSheet(); }).catch(() => {});
+  return null;
+}
 
 /* ---------- cartes ---------- */
 function meta(cid) {
   if (!cid) return { name: "Carte posée", kind: "m" };
   if (CAT[cid]) return CAT[cid];
+  if (cid.startsWith("ygo:")) { const o = IDX.get(cid), d = detail(cid); if (!o) return { cid, name: idxReady ? "Carte inconnue" : "Chargement…", kind: "m", frame: "e", text: "" }; return { ...o, line: d ? d.line : "", stats: d ? d.stats : "", text: d ? d.text : "Chargement du texte…" }; }
   if (cid === "token") return { name: "Jeton", kind: "tok", line: "Jeton", text: "" };
   if (cid.startsWith("txt:")) { const [, k, ...n] = cid.split(":"); return { cid, name: n.join(":"), kind: k, line: KIND[k] + " (carte officielle)", text: "" }; }
   return { name: cid, kind: "m", text: "" };
@@ -178,7 +204,7 @@ const isExtra = (cid) => meta(cid).kind === "x";
 function faceHTML(cid) {
   const m = meta(cid);
   if (m.img) return `<img src="${esc(m.img)}" alt="${esc(m.name)}" loading="lazy">`;
-  return `<div class="ttile k-${esc(m.kind)}">${esc(m.name)}</div>`;
+  return `<div class="ttile k-${esc(m.frame || m.kind)}">${esc(m.name)}</div>`;
 }
 function cardHTML(c, { own, attrs = "", cls = "", count } = {}) {
   if (!c) return "";
@@ -278,7 +304,7 @@ function actionsFor(loc) {
     if (k === "m") A.push(["Invoquer Normalement", P("m", { f: "up", p: "atk" }, "Invocation Normale")], ["Poser (DEF face verso)", P("m", { f: "down", p: "def" }, "Pose d'un monstre")]);
     if (k === "m" || k === "tok") A.push(["Invocation Spéciale ATK", P("me", { f: "up", p: "atk" }, "Invocation Spéciale")], ["Invocation Spéciale DEF", P("me", { f: "up", p: "def" }, "Invocation Spéciale")]);
     if (k === "s" || k === "t") {
-      if (meta(c.c).field || k === "s") A.push(["Activer en Zone Terrain", P("fz", { f: "up" }, "Activation")]);
+      if (meta(c.c).field || (k === "s" && c.c.startsWith("txt:"))) A.push(["Activer en Zone Terrain", P("fz", { f: "up" }, "Activation")]);
       A.push(["Activer", P("s", { f: "up" }, "Activation")], ["Poser face verso", P("s", { f: "down" }, "Pose")]);
     }
     A.push(["Défausser", to("gy", "Défausse")], ["Bannir", to("ban")], ["Révéler", () => { log(`Révèle ${nm(c)} depuis sa main`); closeSheet(); commit(); }],
@@ -487,7 +513,13 @@ function viewDecks() {
       <section class="panel"><label class="field">Nom du deck<input id="dname" maxlength="40" value="${esc(d.name)}"></label></section>
       ${groups.map(([k, t]) => `<section class="panel"><h2>${t} · cartes de l'atelier</h2><div class="cat">${CATLIST.filter((c) => c.kind === k).map((c) => `<div class="citem"><div class="card" data-a="preview" data-c="${esc(c.cid)}">${faceHTML(c.cid)}</div>
         <div class="cnt"><button data-a="qty" data-c="${esc(c.cid)}" data-d="-1" aria-label="Retirer">−</button><span>${qty(c.cid)}</span><button data-a="qty" data-c="${esc(c.cid)}" data-d="1" aria-label="Ajouter">+</button></div></div>`).join("")}</div></section>`).join("")}
-      <section class="panel"><h2>Cartes officielles (par leur nom)</h2><p class="muted" style="margin:0">Elles s'affichent comme des cartes texte. Garde la vraie carte à côté pour lire son effet.</p>
+      <section class="panel"><h2>Cartes officielles</h2>
+        <p class="muted" style="margin:0">${idxReady ? `${IDXLIST.length.toLocaleString("fr-FR")} cartes OCG/TCG, en français. Cherche par nom français ou anglais.` : "Chargement de la base des cartes officielles…"}</p>
+        <input id="osearch" placeholder="ex. Floraison de Cendres, Ash Blossom, Dragon Blanc…" aria-label="Rechercher une carte officielle" value="${esc(S.osq || "")}">
+        <div class="ores">${officialResults(d)}</div>
+        <div class="row-btns"><label class="muted" style="font-size:12.5px">Importer un deck .ydk (YGOPRODeck, DuelingBook, EDOPro…) :</label><input type="file" id="ydk" accept=".ydk,text/plain" aria-label="Fichier .ydk"></div>
+      </section>
+      <section class="panel"><h2>Carte introuvable ?</h2><p class="muted" style="margin:0">Ajoute-la par son nom : elle s'affichera comme une carte texte, sans effet.</p>
         <div class="addtxt"><input id="tname" maxlength="60" placeholder="ex. Ash Blossom & Joyous Spring" aria-label="Nom de la carte"><select id="tkind" aria-label="Catégorie">${Object.entries(KIND).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>
           <select id="tqty" aria-label="Exemplaires"><option>1</option><option>2</option><option selected>3</option></select><button data-a="addtxt">Ajouter</button></div></section>
     </div>
@@ -495,6 +527,29 @@ function viewDecks() {
       <div style="display:grid;gap:4px;font-size:13px">${checks.map(([ok, t]) => `<div class="${ok ? "ok" : "bad"}">${ok ? "✓" : "✗"} ${esc(t)}</div>`).join("")}</div>
       <div class="dlist">${all.length ? all.sort((a, b) => meta(a[0]).kind.localeCompare(meta(b[0]).kind) || meta(a[0]).name.localeCompare(meta(b[0]).name)).map(([cid, n]) => `<div class="l"><b>${n}</b><span title="${esc(meta(cid).name)}">${esc(meta(cid).name)}</span><span class="row-btns"><button data-a="qty" data-c="${esc(cid)}" data-d="-1" aria-label="Retirer">−</button><button data-a="qty" data-c="${esc(cid)}" data-d="1" aria-label="Ajouter">+</button></span></div>`).join("") : `<span class="muted">Deck vide : ajoute des cartes avec +.</span>`}</div>
     </aside></div>`;
+}
+
+function officialResults(d) {
+  const q = norm((S.osq || "").trim());
+  if (!idxReady || q.length < 2) return "";
+  const words = q.split(/\s+/), hits = [];
+  for (const o of IDXLIST) { if (words.every((w) => o.key.includes(w))) { hits.push(o); if (hits.length >= 40) break; } }
+  if (!hits.length) return `<span class="muted">Aucune carte trouvée.</span>`;
+  const qty = (cid) => (isExtra(cid) ? d.extra : d.main)[cid] || 0;
+  return hits.map((o) => `<div class="r"><span class="sw k-${o.frame}"></span><div class="t"><b data-a="preview" data-c="${o.cid}">${esc(o.name)}</b><small>${esc(o.en)}${o.en ? " · " : ""}${{ m: "Monstre", x: "Extra Deck", s: "Magie", t: "Piège" }[o.kind]}</small></div>
+    <div class="cnt"><button data-a="qty" data-c="${o.cid}" data-d="-1" aria-label="Retirer">−</button><span>${qty(o.cid)}</span><button data-a="qty" data-c="${o.cid}" data-d="1" aria-label="Ajouter">+</button></div></div>`).join("");
+}
+function importYdk(text, deck) {
+  let part = "main", ok = 0, miss = 0; deck.main = {}; deck.extra = {};
+  for (const raw of text.split(/\r?\n/)) {
+    const l = raw.trim();
+    if (l === "#main") part = "main"; else if (l === "#extra") part = "extra"; else if (l === "!side") part = "side";
+    if (!/^\d+$/.test(l) || part === "side") continue;
+    const id = ALIAS[l] || +l, cid = "ygo:" + id;
+    if (!IDX.has(cid)) { miss++; continue; }
+    const p = isExtra(cid) ? deck.extra : deck.main; p[cid] = (p[cid] || 0) + 1; ok++;
+  }
+  return { ok, miss };
 }
 
 /* ---------- feuille d'action et listes ---------- */
@@ -683,9 +738,16 @@ document.addEventListener("submit", (e) => {
   if (e.target.dataset.a === "chat") { const v = ($("#chatin").value || "").trim(); if (!v) return; log(v, "chat"); $("#chatin").value = ""; commit(); }
 });
 document.addEventListener("input", (e) => {
+  if (e.target.id === "osearch") { S.osq = e.target.value; const box = document.querySelector(".ores"); if (box && S.editing) box.innerHTML = officialResults(S.editing); return; }
   if (e.target.id === "pname") { S.name = e.target.value.trim().slice(0, 24); store.set("name", S.name); }
 });
 document.addEventListener("change", (e) => {
+  if (e.target.id === "ydk" && e.target.files[0] && S.editing) {
+    const f = e.target.files[0];
+    if (!idxReady) { toast("La base des cartes officielles se charge encore, réessaie dans un instant"); return; }
+    f.text().then((t) => { const nmEl = $("#dname"); S.editing.name = (nmEl && nmEl.value && nmEl.value !== "Nouveau deck") ? nmEl.value : f.name.replace(/\.ydk$/i, ""); const r = importYdk(t, S.editing); toast(`${r.ok} cartes importées${r.miss ? `, ${r.miss} introuvables` : ""}`); render(); });
+    return;
+  }
   if (e.target.id === "pname" && S.mine && S.seat) { flushSave(); if (!S.solo) S.db.doc("games/" + S.gid).update({ players: { [S.seat]: S.name } }).catch(dbError); }
 });
 
@@ -712,6 +774,6 @@ async function boot() {
   db.collection("games").orderBy("upd", "desc").limit(30).onSnapshot((qs) => { S.games = qs.docs.map((d) => ({ id: d.id, ...d.data() })); if (S.view === "lobby") render(); }, dbError);
   S.ready = true; render();
 }
-render(); boot();
+render(); boot(); loadIndex();
 })();
 </script>
