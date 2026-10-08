@@ -1,0 +1,7 @@
+node_modules/
+.cache/
+data/
+public/t/
+public/index-cards.json
+public/hm/
+.vercel

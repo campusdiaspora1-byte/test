@@ -1,0 +1,23 @@
+{
+  "name": "hueco-mundo-online",
+  "private": true,
+  "type": "module",
+  "description": "Duels Yu-Gi-Oh! en ligne avec le moteur d'EDOPro (ocgcore) et l'arch\u00e9type Hueco Mundo",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "build": "node scripts/build-data.mjs",
+    "dev": "node scripts/dev-server.mjs",
+    "test": "node scripts/test-engine.mjs",
+    "sync-hm": "python3 ../edopro/build_edopro.py && rm -rf vendor/hueco-mundo && mkdir -p vendor/hueco-mundo && cp -r ../edopro/dist/expansions/hueco-mundo.cdb ../edopro/dist/expansions/strings.conf ../edopro/dist/expansions/pics ../edopro/dist/expansions/script vendor/hueco-mundo/"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.45.4",
+    "ocgcore-wasm": "0.1.2"
+  },
+  "devDependencies": {
+    "sql.js": "1.11.0"
+  }
+}
