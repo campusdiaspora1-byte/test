@@ -7,7 +7,7 @@ const SUPABASE_KEY = "sb_publishable_KBs-rT5siZVy4mt3rObQVQ_vLXvdaBr";
 const MSG = { RETRY: 1, HINT: 2, WIN: 5, SELECT_BATTLECMD: 10, SELECT_IDLECMD: 11, SELECT_EFFECTYN: 12, SELECT_YESNO: 13, SELECT_OPTION: 14, SELECT_CARD: 15, SELECT_CHAIN: 16,
   SELECT_PLACE: 18, SELECT_POSITION: 19, SELECT_TRIBUTE: 20, SORT_CHAIN: 21, SELECT_COUNTER: 22, SELECT_SUM: 23, SELECT_DISFIELD: 24, SORT_CARD: 25, SELECT_UNSELECT_CARD: 26,
   CONFIRM_CARDS: 31, SHUFFLE_DECK: 32, NEW_TURN: 40, NEW_PHASE: 41, MOVE: 50, POS_CHANGE: 53, SET: 54, SUMMONING: 60, SPSUMMONING: 62, FLIPSUMMONING: 64,
-  CHAINING: 70, CHAIN_SOLVED: 73, CHAIN_NEGATED: 75, CHAIN_DISABLED: 76, DRAW: 90, DAMAGE: 91, RECOVER: 92, EQUIP: 93, CARD_TARGET: 96, PAY_LPCOST: 100, ADD_COUNTER: 101,
+  CHAINING: 70, CARD_HINT: 160, CHAIN_SOLVED: 73, CHAIN_NEGATED: 75, CHAIN_DISABLED: 76, DRAW: 90, DAMAGE: 91, RECOVER: 92, EQUIP: 93, CARD_TARGET: 96, PAY_LPCOST: 100, ADD_COUNTER: 101,
   REMOVE_COUNTER: 102, ATTACK: 110, BATTLE: 111, TOSS_COIN: 130, TOSS_DICE: 131, ROCK_PAPER_SCISSORS: 132, ANNOUNCE_RACE: 140, ANNOUNCE_ATTRIB: 141, ANNOUNCE_CARD: 142, ANNOUNCE_NUMBER: 143 };
 const RESP = { SELECT_BATTLECMD: 0, SELECT_IDLECMD: 1, SELECT_EFFECTYN: 2, SELECT_YESNO: 3, SELECT_OPTION: 4, SELECT_CARD: 5, SELECT_UNSELECT_CARD: 7, SELECT_CHAIN: 8, SELECT_DISFIELD: 9,
   SELECT_PLACE: 10, SELECT_POSITION: 11, SELECT_TRIBUTE: 12, SELECT_COUNTER: 13, SELECT_SUM: 14, SORT_CARD: 15, ANNOUNCE_RACE: 16, ANNOUNCE_ATTRIB: 17, ANNOUNCE_CARD: 18, ANNOUNCE_NUMBER: 19, ROCK_PAPER_SCISSORS: 20 };
@@ -139,7 +139,8 @@ function cardHTML(c, { cls = "", key = "", stat = true, monster = false } = {}) 
   const st = stat && c.atk != null && !down ? `<span class="stat">${c.link ? `${c.atk}` : def ? c.def : c.atk}</span>` : "";
   const mats = c.mats && c.mats.length ? `<span class="badge" title="Matériels">${c.mats.length}</span>` : "";
   const counters = c.counters && c.counters.length ? `<span class="badge" style="bottom:auto;top:2px" title="Compteurs">●${c.counters.reduce((a, x) => a + (x.count || 0), 0)}</span>` : "";
-  return `<div class="${k}" ${key ? `data-key="${key}"` : ""} tabindex="0">${face(down && !c.code ? 0 : c.code)}${st}${mats}${counters}</div>`;
+  const hints = c.hints && c.hints.length ? `<span class="hint-badge" title="${esc(c.hints.map(desc).join(" · "))}">${icon("shield", 11)}</span>` : "";
+  return `<div class="${k}" ${key ? `data-key="${key}"` : ""} tabindex="0">${face(down && !c.code ? 0 : c.code)}${st}${mats}${counters}${hints}</div>`;
 }
 
 /* ---------- réseau ---------- */
@@ -166,6 +167,7 @@ async function refresh(force = false) {
     if (again) { again = false; refresh(); }
   }
 }
+let botT = null;
 function applyView(j) {
   {
     const prevStatus = S.view && S.view.status;
@@ -179,8 +181,12 @@ function applyView(j) {
     if (j.duel && S.view && S.view.duel && JSON.stringify(j.duel.prompt) !== JSON.stringify(S.view.duel.prompt)) { S.picks = []; S.focus = null; S.mini = false; }
     S.view = j; S.version = j.version;
     render();
-    if (animate && j.duel) playAnims(S.log.filter((e) => e.i > prevLast), before);
+    const fresh = S.log.filter((e) => e.i > prevLast);
+    if (animate && j.duel) playAnims(fresh, before);
     autoAnswer();
+    // Tour du bot : il joue un coup à la fois ; on demande le suivant une fois les animations de celui-ci passées
+    clearTimeout(botT);
+    if (j.botTurn) botT = setTimeout(() => refresh(true), Math.min(3200, 1100 + 260 * fresh.length));
   }
 }
 function listen() {
@@ -603,6 +609,7 @@ function viewFocus(acts) {
       <div class="turn-heading"><small>CARTE SÉLECTIONNÉE</small><button class="side-ghost" style="min-height:26px;padding:0 8px" data-a="unfocus" aria-label="Fermer">${icon("x", 14)}</button></div>
       <strong>${esc(code ? cname(code) : "Carte face verso")}</strong><span>${esc(typeLine(t))}</span>
       ${card && card.mats && card.mats.length ? `<span>Matériels : ${card.mats.map((m) => esc(cname(m))).join(", ")}</span>` : ""}</div></div>
+    ${card && card.hints && card.hints.length ? `<div class="active-hints"><small>EFFETS ACTIFS</small>${card.hints.map((h) => `<div>${icon("shield", 13)} ${esc(desc(h))}</div>`).join("")}</div>` : ""}
     ${list.length ? `<div class="menu">${list.map((a, i) => `<button class="${i === 0 ? "side-primary" : "side-ghost"}" ${S.busy ? "disabled" : ""} data-a="doact" data-i="${i}">${esc(a.label)}</button>`).join("")}</div>` : ""}
     ${t && t.desc ? `<div class="card-text">${esc(t.desc)}</div>` : ""}</div>`;
 }
@@ -615,6 +622,7 @@ function choiceGrid(cards, { picked = [], marked = [] } = {}) {
 function viewPrompt(p, acts, places, me, pname, d) {
   const wait = (title, sub) => `<div class="side-card prompt-card wait"><div class="prompt-head"><div class="waiting-icon">${icon("clock", 20)}</div><div><strong>${esc(title)}</strong><p>${esc(sub)}</p></div></div></div>`;
   if (!S.view.seat) return wait(d.waitingFor != null ? `${pname(d.waitingFor)} réfléchit…` : "…", "Tu regardes ce duel en spectateur.");
+  if (!p && S.view.botTurn) return wait(`${pname(d.waitingFor)} joue…`, "Le bot joue ses coups un par un : suis-les sur le terrain et dans le journal.");
   if (!p) return wait(d.waitingFor != null && d.waitingFor !== me ? `${pname(d.waitingFor)} réfléchit…` : "Le moteur résout…", "Tu seras prévenu dès que c'est à toi.");
   const busy = S.busy ? "disabled" : "";
   const R = (r) => `data-a="raw" data-r='${JSON.stringify(r)}'`;
@@ -710,24 +718,55 @@ function logLine(e, me, pname) {
     case MSG.SPSUMMONING: return item("blue", "INVOCATION SPÉCIALE", `${nm(e.code)} est Invoqué Spécialement.`);
     case MSG.FLIPSUMMONING: return item("blue", "INVOCATION FLIP", `${nm(e.code)} est retourné.`);
     case MSG.SET: return item("", "POSE", e.code ? `${nm(e.code)} est Posée.` : "Une carte est Posée.");
-    case MSG.CHAINING: return item("green", `EFFET ACTIVÉ · MAILLON ${e.chain_size}`, `${nm(e.code)} s'active.`);
+    case MSG.CHAINING: {
+      const what = e.description ? desc(e.description) : "", plain = !what || /^#/.test(what) || /^Effet de /.test(what);
+      return item("green", `EFFET ACTIVÉ · MAILLON ${e.chain_size}`, `${who(e.controller)} active ${nm(e.code)}${plain ? "" : ` : « ${esc(what)} »`}.`);
+    }
     case MSG.CHAIN_NEGATED: case MSG.CHAIN_DISABLED: return item("red", "ANNULATION", `Le maillon ${e.chain_size} est annulé.`);
     case MSG.DAMAGE: return item("red", "DÉGÂTS", `${who(e.player)} perd <b>${e.amount.toLocaleString("fr-FR")} LP</b>.`);
     case MSG.PAY_LPCOST: return item("red", "COÛT", `${who(e.player)} paie <b>${e.amount.toLocaleString("fr-FR")} LP</b>.`);
     case MSG.RECOVER: return item("green", "SOIN", `${who(e.player)} gagne <b>${e.amount.toLocaleString("fr-FR")} LP</b>.`);
-    case MSG.ATTACK: { const a = F_code(e.card), t = e.target ? F_code(e.target) : null; return item("red", "COMBAT", `${a ? nm(a) : "Un monstre"} attaque ${e.target ? (t ? nm(t) : "un monstre face verso") : "directement"}.`); }
+    case MSG.ATTACK: { const a = e.code || F_code(e.card), t = e.target ? e.tcode || F_code(e.target) : null; return item("red", "ATTAQUE", `${a ? nm(a) : "Un monstre"} (${who(e.card.controller)}) attaque ${e.target ? (t ? nm(t) : "un monstre face verso") : "directement"}.`); }
+    case MSG.BATTLE: { // calcul des dommages : valeurs au moment du combat, monstres détruits, et protections de ceux qui survivent
+      const A = `${e.code ? nm(e.code) : "L'attaquant"} de ${who(e.card.controller)}`, T = e.target ? `${e.tcode ? nm(e.tcode) : "le défenseur"} de ${who(e.target.controller)}` : "";
+      const atkPos = (x) => x.position & 0x3, val = (x) => (atkPos(x) ? `ATK ${x.attack}` : `DEF ${x.defense}`);
+      const why = (h) => (h && h.length ? ` (${h.map((x) => esc(desc(x))).join(", ")})` : "");
+      const res = [];
+      if (e.card.destroyed) res.push(`${A} est détruit`);
+      if (e.target && e.target.destroyed) res.push(`${T} est détruit`);
+      if (e.target && !e.target.destroyed && e.thints && e.thints.length && (atkPos(e.target) ? e.card.attack >= e.target.attack : e.card.attack > e.target.defense)) res.push(`${T} survit${why(e.thints)}`);
+      if (e.target && !e.card.destroyed && e.ahints && e.ahints.length && atkPos(e.target) && e.target.attack >= e.card.attack) res.push(`${A} survit${why(e.ahints)}`);
+      return item("red", "CALCUL DES DOMMAGES", `${A} (ATK ${e.card.attack})${e.target ? ` contre ${T} (${val(e.target)})` : " attaque directement"}${res.length ? " : " + res.join(" ; ") : e.target ? " : aucun monstre détruit" : ""}.`);
+    }
     case MSG.MOVE: {
       if (e.from.location === e.to.location && e.from.controller === e.to.controller) return "";
       if (e.from.location === LOC.DECK && e.to.location === LOC.HAND && !e.card) return "";
       if (e.to.location === LOC.OVERLAY && !e.card) return "";
-      return item("", "DÉPLACEMENT", `${e.card ? nm(e.card) : "Une carte"} : ${esc(LOCN[e.from.location] || "")} → ${esc(LOCN[e.to.location] || "")}${e.to.controller !== e.from.controller && e.from.location ? ` (${who(e.to.controller)})` : ""}.`);
+      const why = moveReason(e), by = e.by && e.by !== e.card ? ` par l'effet de ${nm(e.by)}` : "";
+      const card = e.card ? nm(e.card) : why ? "une carte" : "Une carte", where = `${esc(LOCN[e.from.location] || "")} → ${esc(LOCN[e.to.location] || "")}${e.to.controller !== e.from.controller && e.from.location ? ` (${who(e.to.controller)})` : ""}`;
+      return why ? item(why.red ? "red" : "", why.label, `${why.noun} ${card}${by} (${where}).`) : item("", "DÉPLACEMENT", `${card} : ${where}.`);
     }
+    case MSG.CARD_HINT: return item("gold", "EFFET APPLIQUÉ", `${e.code ? nm(e.code) : "Une carte"} (${who(e.controller)}) : ${esc(desc(e.description))}${e.by && e.by !== e.code ? `, grâce à ${nm(e.by)}` : ""}.`);
     case MSG.CONFIRM_CARDS: return item("", "RÉVÉLATION", e.cards.map((c) => nm(c.code)).join(", "));
     case MSG.TOSS_COIN: return item("gold", "PILE OU FACE", e.results.map((r) => (r ? "Face" : "Pile")).join(", "));
     case MSG.TOSS_DICE: return item("gold", "DÉ", e.results.join(", "));
     case MSG.WIN: return item("gold", "FIN DU DUEL", e.player < 2 ? `${who(e.player)} remporte le duel.` : "Égalité.");
   }
   return "";
+}
+// Raison d'un déplacement (REASON_* de constant.lua), en tournure sans accord : « Destruction de X », « Sacrifice de X »…
+function moveReason(e) {
+  const r = e.reason || 0, from = e.from.location, to = e.to.location, onField = from & (LOC.MZONE | LOC.SZONE);
+  if (r & 0x1) return r & 0x20 ? { label: "DESTRUCTION AU COMBAT", noun: "Destruction au combat de", red: true } : { label: "DESTRUCTION", noun: "Destruction de", red: true };
+  if (r & 0x2) return { label: "SACRIFICE", noun: "Sacrifice de" };
+  if (r & 0x8) return { label: "MATÉRIEL", noun: "Utilisation comme Matériel de" };
+  if (r & 0x4000) return { label: "DÉFAUSSE", noun: "Défausse de" };
+  if (r & 0x80) return { label: "COÛT", noun: "Coût payé avec" };
+  if (r & 0x40 && to === LOC.REMOVED) return { label: "BANNISSEMENT", noun: "Bannissement de", red: true };
+  if (r & 0x40 && to === LOC.GRAVE && onField) return { label: "ENVOI AU CIMETIÈRE", noun: "Envoi au Cimetière de", red: true };
+  if (r & 0x40 && to === LOC.HAND && onField) return { label: "RETOUR EN MAIN", noun: "Retour en main de" };
+  if (r & 0x40 && to === LOC.DECK && onField) return { label: "RETOUR AU DECK", noun: "Retour au Deck de" };
+  return null;
 }
 function F_code(lp) {
   const F = S.view.duel.field[lp.controller];

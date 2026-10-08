@@ -328,3 +328,9 @@ textarea { width: 100%; min-height: 110px; font: 500 12px/1.4 ui-monospace, Menl
 .bot-option .thumb { width: 38px; height: 55px; display: block; } .bot-option .thumb .card { width: 38px; height: 55px; }
 .bot-option strong { display: block; font: 700 16px var(--font-display); letter-spacing: .3px; }
 .bot-option small { color: var(--dim); font-size: 11.5px; }
+
+/* ---------- effets actifs sur une carte (comme les icônes d'EDOPro) ---------- */
+.card .hint-badge { position: absolute; top: 2px; left: 2px; z-index: 3; width: 17px; height: 17px; display: grid; place-items: center; border-radius: 50%; background: #2c6e8f; color: #fff; box-shadow: 0 0 0 1.5px rgba(8,8,8,.85); }
+.active-hints { display: grid; gap: 5px; padding: 10px 12px; border: 1px solid #2c6e8f; background: rgba(44,110,143,.12); border-radius: 6px; font-size: 13px; color: var(--ink-2); }
+.active-hints small { color: #7fc3e2; font: 800 10px var(--font-ui); letter-spacing: 1.6px; }
+.active-hints div { display: flex; align-items: center; gap: 7px; }

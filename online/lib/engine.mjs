@@ -188,6 +188,22 @@ export async function autoDuel(game, answer, { steps = 300, fallback = null } = 
 }
 
 /* ---------- ce que voit un joueur ---------- */
+// Effets actifs affichés sur les cartes (EFFECT_FLAG_CLIENT_HINT, comme les icônes d'EDOPro) : « Ne peut pas être détruit au combat »…
+// Le moteur les envoie par CARD_HINT (6 : ajout, 7 : retrait) ; ils disparaissent quand la carte quitte sa zone.
+function cardHints(r) {
+  if (r._hints && r._hints.n === r.messages.length) return r._hints.map;
+  const map = new Map(), key = (c) => `${c.controller}:${c.location}:${c.sequence}`;
+  for (const m of r.messages) {
+    if (m.type === M.MOVE) { map.delete(key(m.from)); map.delete(key(m.to)); }
+    else if (m.type === M.CARD_HINT && (m.card_hint === 6 || m.card_hint === 7) && m.location & (L.MZONE | L.SZONE)) {
+      const k = key(m), list = map.get(k) || [], d = Number(m.description);
+      if (m.card_hint === 6) { if (!list.includes(d)) list.push(d); } else list.splice(list.indexOf(d) >>> 0, list.includes(d) ? 1 : 0);
+      list.length ? map.set(k, list) : map.delete(k);
+    }
+  }
+  r._hints = { n: r.messages.length, map };
+  return map;
+}
 const FLAGS = Q.CODE | Q.POSITION | Q.ATTACK | Q.DEFENSE | Q.LEVEL | Q.RANK | Q.LINK | Q.COUNTERS | Q.OVERLAY_CARD | Q.OWNER;
 function zone(r, team, loc, viewer) {
   return r.lib.duelQueryLocation(r.h, { flags: FLAGS, controller: team, location: loc }).map((c, seq) => {
@@ -197,6 +213,7 @@ function zone(r, team, loc, viewer) {
     if (!hidden && (loc === L.MZONE)) Object.assign(out, { atk: c.attack, def: c.defense, level: c.level, rank: c.rank, link: c.link });
     if (c.counters && c.counters.length) out.counters = c.counters;
     if (c.overlay_card && c.overlay_card.length) out.mats = c.overlay_card; // les Matériels Xyz sont publics
+    if (!hidden && loc & (L.MZONE | L.SZONE)) { const h = cardHints(r).get(`${team}:${loc}:${seq}`); if (h) out.hints = h; }
     return out;
   });
 }
@@ -235,18 +252,55 @@ export function promptFor(r, viewer) {
 // Journal : les événements, avec les cartes cachées masquées pour ce joueur
 const LOG = new Set([M.NEW_TURN, M.NEW_PHASE, M.MOVE, M.SUMMONING, M.SPSUMMONING, M.FLIPSUMMONING, M.SET, M.CHAINING, M.CHAIN_SOLVED, M.CHAIN_NEGATED, M.CHAIN_DISABLED,
   M.DAMAGE, M.RECOVER, M.PAY_LPCOST, M.ATTACK, M.BATTLE, M.DRAW, M.WIN, M.CONFIRM_CARDS, M.TOSS_COIN, M.TOSS_DICE, M.POS_CHANGE, M.SHUFFLE_DECK, M.EQUIP,
-  M.CARD_TARGET, M.ADD_COUNTER, M.REMOVE_COUNTER, M.HINT]);
+  M.CARD_TARGET, M.ADD_COUNTER, M.REMOVE_COUNTER, M.HINT, M.CARD_HINT]);
+// Le journal est enrichi pendant la lecture des messages, pour qu'il explique ce qui se passe :
+//  · quelle carte occupe chaque zone (le nom d'un attaquant reste connu même s'il a quitté le terrain depuis)
+//  · quel maillon de chaîne se résout (« détruit par l'effet de … »)
+//  · la raison de chaque déplacement (REASON_*, lue par scripts/patch-ocgcore.mjs)
 export function logFor(r, viewer, from = 0) {
-  const out = [];
+  const out = [], zones = new Map(), chain = [], hints = new Map();
+  const zk = (c) => `${c.controller}:${c.location}:${c.sequence}`;
+  const shown = (c, code) => (c && !(c.position & FACEDOWN) ? code : c && c.controller === viewer ? code : 0);
+  let solving = null;
   r.messages.forEach((m, i) => {
+    // suivi de l'état, même avant `from`
+    if (m.type === M.MOVE) {
+      hints.delete(zk(m.from)); hints.delete(zk(m.to));
+      if (m.from.location & (L.MZONE | L.SZONE)) zones.delete(zk(m.from));
+      if (m.to.location & (L.MZONE | L.SZONE)) zones.set(zk(m.to), { code: m.card, pos: m.to.position });
+    }
+    if (m.type === M.SUMMONING || m.type === M.SPSUMMONING || m.type === M.FLIPSUMMONING || m.type === M.POS_CHANGE) zones.set(zk(m), { code: m.code, pos: m.position });
+    if (m.type === M.CARD_HINT && (m.card_hint === 6 || m.card_hint === 7)) {
+      const k = zk(m), list = hints.get(k) || [], d = Number(m.description);
+      if (m.card_hint === 6) { if (!list.includes(d)) list.push(d); } else if (list.includes(d)) list.splice(list.indexOf(d), 1);
+      hints.set(k, list);
+    }
+    if (m.type === M.CHAINING) chain[m.chain_size] = { code: m.code, controller: m.controller };
+    if (m.type === M.CHAIN_SOLVING) solving = chain[m.chain_size] || null;
+    if (m.type === M.CHAIN_SOLVED) solving = null;
+    if (m.type === M.CHAIN_END) { chain.length = 0; solving = null; }
     if (i < from || !LOG.has(m.type)) return;
     if (m.type === M.HINT && m.hint_type !== 10 /* HINT_CARD : carte qui s'active */) return;
+    if (m.type === M.CARD_HINT && (m.card_hint !== 6 || !(m.location & (L.MZONE | L.SZONE)))) return; // seulement les effets ajoutés sur le terrain
     let e = { ...m, i };
+    if (m.type === M.CARD_HINT) { const z = zones.get(zk(m)); e.code = z ? shown({ ...m, position: z.pos }, z.code) : 0; if (solving) e.by = solving.code; }
     if (m.type === M.MOVE) {
       const seen = (m.to.controller === viewer && !(m.to.location & L.DECK)) || ((m.to.location & PUBLIC_LOC) && !(m.to.position & FACEDOWN)) ||
         (m.from.controller === viewer && !(m.from.location & L.DECK) && !(m.from.position & FACEDOWN && m.to.location & L.DECK)) ||
         ((m.from.location & PUBLIC_LOC) && !(m.from.position & FACEDOWN));
       if (!seen) e.card = 0;
+      if (solving && (m.reason ?? 0x40) & 0x40) e.by = solving.code; // pendant la résolution d'un effet
+    }
+    if (m.type === M.ATTACK) {
+      const a = zones.get(zk(m.card)), t = m.target && zones.get(zk(m.target));
+      e.code = a ? a.code : 0;
+      e.tcode = t ? shown({ ...m.target, position: t.pos }, t.code) : 0;
+    }
+    if (m.type === M.BATTLE) {
+      if (m.target && !m.target.location) e.target = null; // attaque directe : le moteur envoie une cible vide
+      const a = zones.get(zk(m.card)), t = e.target && zones.get(zk(m.target));
+      e.code = a ? a.code : 0; e.tcode = t ? t.code : 0;
+      e.ahints = hints.get(zk(m.card)) || []; e.thints = e.target ? hints.get(zk(m.target)) || [] : [];
     }
     if (m.type === M.DRAW && m.player !== viewer) e.drawn = m.drawn.map(() => ({ code: 0 }));
     if (m.type === M.SET) e.code = m.card && m.card.controller === viewer ? m.code : 0;

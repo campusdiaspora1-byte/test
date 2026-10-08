@@ -123,13 +123,19 @@ function startDuel(d) {
 const nothingToChain = (p) => p && p.type === 16 /* SELECT_CHAIN */ && !p.selects.length && !p.forced;
 const botTeam = (d) => { const s = SEATS.find((x) => d.players[x] && d.players[x].bot); return s && d.game ? d.game.teams[s] : null; };
 const plain = (x) => JSON.parse(toJSON(x)); // réponses stockées en JSON (pas de BigInt)
+// Le bot joue une action à la fois (une Invocation, une activation, une attaque…) : la page redemande la suite
+// après un court délai, pour que le joueur voie chaque coup et ses animations.
+const isDecision = (p) => p.type === 11 /* IDLECMD */ || p.type === 10 /* BATTLECMD */ || p.type === 12 /* EFFECTYN */ || (p.type === 16 /* CHAIN */ && p.selects.length > 0);
+const isVisible = (p, resp) => p.type === 11 || p.type === 10 || (p.type === 12 && resp.yes) || (p.type === 16 && resp.index != null);
 async function settle(d, r, budget = 18000) {
   const bt = botTeam(d), t0 = Date.now();
   const memo = (d.game.botMemo ||= {});
+  let acted = false;
   for (let i = 0; i < 3000 && r.pending && !r.ended && Date.now() - t0 < budget; i++) {
     const p = r.pending, team = p.player;
     let resp;
-    if (team === bt) resp = botAnswer(r, team, memo);
+    if (team === bt && acted && isDecision(p)) break; // pause : le coup suivant attendra la prochaine requête
+    if (team === bt) { resp = botAnswer(r, team, memo); if (resp && isVisible(p, resp)) acted = true; }
     else if (nothingToChain(p)) resp = { type: 8, index: null };
     else break;
     if (!resp || !advance(r, resp)) { // réponse refusée : comme WindBot après un « retry », il passe
@@ -195,7 +201,8 @@ export async function roomView(code, token, from = 0, knownVersion = 0) {
   if (knownVersion && knownVersion === room.version) return { code, version: room.version, same: true }; // rien de neuf : pas de relecture
   const seat = SEATS.find((s) => token && d.players[s] && d.players[s].token === token) || null;
   const players = Object.fromEntries(SEATS.map((s) => [s, d.players[s] ? { name: d.players[s].name, bot: !!d.players[s].bot, ready: !!d.players[s].deck, deckName: d.players[s].deck && d.players[s].deck.name } : null]));
-  const out = { code, version: room.version, status: d.status, seat, players, chat: d.chat || [], format: formatInfo(formatOf(d.format)) };
+  const out = { code, version: room.version, status: d.status, seat, players, chat: d.chat || [], format: formatInfo(formatOf(d.format)),
+    botTurn: d.status === "duel" && botTeam(d) != null && d.game.waiting === botTeam(d) };
   if (d.game) {
     const team = seat ? d.game.teams[seat] : 2; // spectateur : ne voit aucune carte cachée
     out.team = team; out.teams = d.game.teams; out.first = d.game.first;
