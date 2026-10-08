@@ -25,7 +25,7 @@ export default async function handler(req, res) {
         case "create": out = await createRoom(b.name); break;
         case "join": out = await joinRoom(b.code, b.name, b.token); break;
         case "deck": out = await setDeck(b.code, b.token, b.deck); break;
-        case "respond": out = await respond(b.code, b.token, b.response); break;
+        case "respond": out = await respond(b.code, b.token, b.response); out.view = await roomView(b.code, b.token, +(b.from || 0)); break;
         case "surrender": out = await surrender(b.code, b.token); break;
         case "rematch": out = await rematch(b.code, b.token); break;
         case "chat": out = await chat(b.code, b.token, b.text); break;

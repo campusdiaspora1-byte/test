@@ -289,3 +289,13 @@ textarea { width: 100%; min-height: 110px; font: 500 12px/1.4 ui-monospace, Menl
 .filters { display: flex; flex-wrap: wrap; gap: 6px; }
 .filters select { flex: 1 1 140px; min-width: 0; padding: 8px 10px; font-size: 12px; background: #0b0c0d; border: 1px solid #302e2a; color: #c9c0b1; }
 .ghost-action.more { align-self: center; margin-top: 4px; }
+
+/* ---------- réduire la fenêtre, confirmation, envoi ---------- */
+.mini-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 34px; margin-bottom: 6px; color: #8f97a8; background: #0d1628; border: 1px solid #2a364a; border-radius: 6px; font: 700 10px var(--font-ui); letter-spacing: 1px; }
+.mini-btn .icon { transform: rotate(90deg); } .mini-btn:hover { color: var(--ink); }
+.pick-summary { font-size: 12px; color: #c9cdd6; background: #0d1628; border: 1px solid #2a364a; border-radius: 6px; padding: 8px 10px; line-height: 1.45; }
+.waiting-icon.spin .icon { animation: spin 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .waiting-icon.spin .icon { animation: none; } }
+
+.install-btn { min-height: 34px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; color: #170e08; background: linear-gradient(105deg, #b77c2c, #e0b85f); font: 800 11px var(--font-ui); letter-spacing: .4px; margin-right: 6px; }
+@media (max-width: 720px) { .install-btn { min-height: 32px; padding: 0 10px; font-size: 10px; } }

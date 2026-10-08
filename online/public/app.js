@@ -121,6 +121,14 @@ async function refresh(force = false) {
     const j = await r.json();
     if (!r.ok) { if (r.status === 404) { toast(j.error); leave(); } return; }
     if (j.same) return;
+    applyView(j);
+  } catch (e) { /* réseau : on réessaiera */ } finally {
+    fetching = false;
+    if (again) { again = false; refresh(); }
+  }
+}
+function applyView(j) {
+  {
     const prevStatus = S.view && S.view.status;
     const prevLast = S.log.length ? S.log[S.log.length - 1].i : -1, animate = !!(S.view && S.view.duel), before = animate ? snapRects() : null;
     if (j.duel) {
@@ -129,14 +137,11 @@ async function refresh(force = false) {
       S.log.push(...j.duel.log.filter((e) => !S.log.length || e.i > S.log[S.log.length - 1].i));
       S.logEnd = j.duel.logEnd;
     } else { S.log = []; S.logEnd = 0; }
-    if (j.duel && S.view && S.view.duel && JSON.stringify(j.duel.prompt) !== JSON.stringify(S.view.duel.prompt)) { S.picks = []; S.focus = null; }
+    if (j.duel && S.view && S.view.duel && JSON.stringify(j.duel.prompt) !== JSON.stringify(S.view.duel.prompt)) { S.picks = []; S.focus = null; S.mini = false; }
     S.view = j; S.version = j.version;
     render();
     if (animate && j.duel) playAnims(S.log.filter((e) => e.i > prevLast), before);
     autoAnswer();
-  } catch (e) { /* réseau : on réessaiera */ } finally {
-    fetching = false;
-    if (again) { again = false; refresh(); }
   }
 }
 function listen() {
@@ -161,9 +166,13 @@ function leave() {
 }
 async function send(response) {
   if (S.busy) return;
-  S.busy = true; render();
-  try { await api({ action: "respond", code: S.code, token: S.token, response }); S.picks = []; S.focus = null; await refresh(); }
-  catch (e) { toast(e.message); }
+  S.busy = true; S.focus = null; render(); // la fenêtre se ferme tout de suite : « Le moteur résout… »
+  try {
+    const r = await api({ action: "respond", code: S.code, token: S.token, response, from: S.logEnd });
+    S.picks = [];
+    S.busy = false;
+    if (r.view) applyView(r.view); else await refresh();
+  } catch (e) { toast(e.message); }
   finally { S.busy = false; render(); }
 }
 // Questions sans intérêt : rien à chaîner, on passe tout de suite
@@ -232,7 +241,7 @@ function topbar() {
   const tab = (id, ic, label) => `<button class="${!S.code && S.tab === id ? "active" : ""}" data-a="tab" data-t="${id}">${icon(ic, 17)}${label}</button>`;
   return `<nav class="topbar" aria-label="Navigation principale">${logo()}
     <div class="main-nav">${tab("play", "swords", "Jouer")}${tab("decks", "cards", "Mes decks")}${tab("rooms", "users", "Salles")}</div>
-    <div class="user-area"><div class="online-dot"></div><div><strong>${esc(S.name || "Sans pseudo")}</strong><small>${S.name ? "Duelliste" : "Choisis un pseudo"}</small></div><div class="avatar">${esc(initials(S.name))}</div></div></nav>`;
+    <div class="user-area">${installButton()}<div class="online-dot"></div><div><strong>${esc(S.name || "Sans pseudo")}</strong><small>${S.name ? "Duelliste" : "Choisis un pseudo"}</small></div><div class="avatar">${esc(initials(S.name))}</div></div></nav>`;
 }
 const emblem = () => `<div class="loader-emblem"><div class="loader-ring"></div><div class="loader-ring second"></div>${icon("swords", 42)}</div>`;
 
@@ -498,9 +507,10 @@ function viewDuel() {
   // Les interactions s'ouvrent par-dessus le terrain : barre fixe en bas pour les commandes, pop-up pour le reste
   const DOCK = new Set([MSG.SELECT_IDLECMD, MSG.SELECT_BATTLECMD, MSG.SELECT_PLACE, MSG.SELECT_DISFIELD]);
   const promptHTML = d.ended ? "" : viewPrompt(p, acts, places, me, pname, d);
-  const inPopup = p && !DOCK.has(p.type);
-  const dock = d.ended ? "" : `<div class="duel-dock">${inPopup ? `<div class="side-card prompt-card wait"><div class="prompt-head"><div class="waiting-icon">${icon("spark", 20)}</div><div><strong>Une décision t'attend</strong><p>Réponds dans la fenêtre ouverte.</p></div></div></div>` : promptHTML}</div>`;
-  const popup = inPopup ? `<div class="overlay" role="dialog" aria-modal="true"><div class="popup" data-a="noop">${promptHTML}</div></div>`
+  const inPopup = p && !DOCK.has(p.type) && !S.busy;
+  const busyCard = `<div class="side-card prompt-card wait"><div class="prompt-head"><div class="waiting-icon spin">${icon("clock", 20)}</div><div><strong>Le moteur résout…</strong><p>Ton choix est envoyé.</p></div></div></div>`;
+  const dock = d.ended ? "" : `<div class="duel-dock">${S.busy ? busyCard : inPopup ? `<div class="side-card prompt-card"><div class="prompt-head"><div class="waiting-icon">${icon("spark", 20)}</div><div><strong>Une décision t'attend</strong><p>${S.mini ? "Regarde le terrain, puis reprends ta décision." : "Réponds dans la fenêtre ouverte."}</p></div></div>${S.mini ? `<div class="btns"><button class="next-phase" data-a="unmini">REPRENDRE MA DÉCISION ${icon("chevron", 15)}</button></div>` : ""}</div>` : promptHTML}</div>`;
+  const popup = inPopup && !S.mini ? `<div class="overlay" role="dialog" aria-modal="true"><div class="popup" data-a="noop"><button class="mini-btn" data-a="mini">${icon("chevron", 15)} VOIR LE TERRAIN</button>${promptHTML}</div></div>`
     : S.focus ? `<div class="overlay" data-a="unfocus" role="dialog" aria-modal="true"><div class="popup" data-a="noop">${viewFocus(acts)}</div></div>` : "";
   return `<section class="yod-game">
     <header class="game-header"><button class="back-lobby" data-a="leave">${icon("chevron", 16)}ACCUEIL</button>
@@ -562,8 +572,10 @@ function viewPrompt(p, acts, places, me, pname, d) {
       return P("Choisis une option", "", `<div class="menu">${p.options.map((o, i) => `<button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_OPTION, index: i })}>${esc(desc(o))}</button>`).join("")}</div>`);
     case MSG.SELECT_CHAIN:
       return P(p.forced ? "Tu dois activer un effet" : "Chaîner ?", "Active une carte en réponse, ou passe.",
-        `${choiceGrid(p.selects)}<div class="menu">${p.selects.map((c, i) => `<button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_CHAIN, index: i })}>${esc(cname(c.code))} : ${esc(desc(c.description))}</button>`).join("")}</div>
-        ${p.forced ? "" : `<button class="next-phase" ${busy} ${R({ type: RESP.SELECT_CHAIN, index: null })}>NE PAS CHAÎNER</button>`}`);
+        `${choiceGrid(p.selects, { picked: S.picks })}
+        ${S.picks.length ? `<div class="pick-summary"><b>${esc(cname(p.selects[S.picks[0]].code))}</b> : ${esc(desc(p.selects[S.picks[0]].description))}</div>` : `<p class="muted small" style="margin:0">Touche une carte pour voir son effet, puis confirme.</p>`}
+        <div class="btns"><button class="next-phase" ${busy} ${S.picks.length ? "" : "disabled"} ${R({ type: RESP.SELECT_CHAIN, index: S.picks[0] ?? 0 })}>ACTIVER</button>
+        ${p.forced ? "" : `<button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_CHAIN, index: null })}>NE PAS CHAÎNER</button>`}</div>`);
     case MSG.SELECT_CARD: case MSG.SELECT_TRIBUTE: {
       const n = S.picks.length, ok = n >= p.min && n <= p.max, range = p.min === p.max ? p.min : `${p.min} à ${p.max}`;
       return P(p.type === MSG.SELECT_TRIBUTE ? `Choisis ${range} monstre(s) à Sacrifier` : `Choisis ${range} carte(s)`, "",
@@ -573,8 +585,8 @@ function viewPrompt(p, acts, places, me, pname, d) {
     case MSG.SELECT_UNSELECT_CARD: {
       const all = [...p.select_cards, ...p.unselect_cards];
       return P(`Choisis des cartes (${p.min} à ${p.max})`, "Les cartes déjà choisies brillent : clique dessus pour les retirer.",
-        `${choiceGrid(all, { marked: p.unselect_cards.map((_, i) => p.select_cards.length + i) })}
-        <div class="btns">${p.can_finish ? `<button class="next-phase" ${busy} ${R({ type: RESP.SELECT_UNSELECT_CARD, index: null })}>TERMINER</button>` : ""}
+        `${choiceGrid(all, { picked: S.picks, marked: p.unselect_cards.map((_, i) => p.select_cards.length + i) })}
+        <div class="btns">${S.picks.length ? `<button class="next-phase" ${busy} ${R({ type: RESP.SELECT_UNSELECT_CARD, index: S.picks[0] })}>${S.picks[0] >= p.select_cards.length ? "RETIRER" : "CHOISIR"} « ${esc(cname(all[S.picks[0]].code))} »</button>` : ""}${p.can_finish ? `<button class="next-phase" ${busy} ${R({ type: RESP.SELECT_UNSELECT_CARD, index: null })}>TERMINER</button>` : ""}
         ${p.can_cancel && !p.can_finish ? `<button class="side-ghost" ${busy} ${R({ type: RESP.SELECT_UNSELECT_CARD, index: null })}>ANNULER</button>` : ""}</div>`);
     }
     case MSG.SELECT_SUM: {
@@ -826,18 +838,19 @@ const ACT = {
   doact(el) { const a = (actionsMap(S.view.duel.prompt)[S.focus] || [])[+el.dataset.i]; if (a) send(a.resp); },
   unfocus() { S.focus = null; render(); },
   noop() {},
+  mini() { S.mini = true; render(); },
+  unmini() { S.mini = false; render(); },
   more() { S.limit += 60; render(); },
   resetfilters() { S.f = { cat: "all", sub: "", attr: "", race: "", lvl: "", sort: "name" }; S.search = ""; S.limit = 60; render(); },
   raw(el) { send(JSON.parse(el.dataset.r)); },
   pickc(el) {
     const p = S.view.duel.prompt, i = +el.dataset.i;
     if (!p) return;
-    if (p.type === MSG.SELECT_UNSELECT_CARD) return send({ type: RESP.SELECT_UNSELECT_CARD, index: i });
-    if (p.type === MSG.SELECT_CHAIN) return send({ type: RESP.SELECT_CHAIN, index: i });
+    if (p.type === MSG.SELECT_UNSELECT_CARD || p.type === MSG.SELECT_CHAIN) { S.picks = S.picks[0] === i ? [] : [i]; return render(); } // un seul choix, confirmé par le bouton
     if (p.type === MSG.SORT_CARD || p.type === MSG.SORT_CHAIN) { if (!S.picks.includes(i)) S.picks.push(i); return render(); }
     const k = S.picks.indexOf(i);
-    if (k > -1) S.picks.splice(k, 1); else if ((p.type !== MSG.SELECT_CARD && p.type !== MSG.SELECT_TRIBUTE) || S.picks.length < p.max) S.picks.push(i);
-    if (p.type === MSG.SELECT_CARD && p.min === 1 && p.max === 1 && S.picks.length === 1) return send({ type: RESP.SELECT_CARD, indicies: S.picks });
+    if ((p.type === MSG.SELECT_CARD || p.type === MSG.SELECT_TRIBUTE) && p.max === 1) S.picks = k > -1 ? [] : [i]; // remplace la sélection, on confirme avec « Valider »
+    else if (k > -1) S.picks.splice(k, 1); else if ((p.type !== MSG.SELECT_CARD && p.type !== MSG.SELECT_TRIBUTE) || S.picks.length < p.max) S.picks.push(i);
     render();
   },
   confirmcards() { const p = S.view.duel.prompt; send({ type: p.type === MSG.SELECT_TRIBUTE ? RESP.SELECT_TRIBUTE : RESP.SELECT_CARD, indicies: S.picks }); },
@@ -897,6 +910,19 @@ document.addEventListener("change", (e) => {
   const fk = { "f-cat": "cat", "f-sub": "sub", "f-attr": "attr", "f-race": "race", "f-lvl": "lvl", "f-sort": "sort" }[e.target.id];
   if (fk) { S.f[fk] = e.target.value; if (fk === "cat") S.f.sub = ""; S.limit = 60; render(); }
 });
+
+/* ---------- appli installable ---------- */
+let installEvt = null;
+const standalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; render(); });
+window.addEventListener("appinstalled", () => { installEvt = null; toast("Your Own Duel est installé sur ton appareil"); render(); });
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+const installButton = () => (standalone() ? "" : installEvt || isIOS ? `<button class="install-btn" data-a="install">${icon("plus", 15)}Installer l'appli</button>` : "");
+ACT.install = async () => {
+  if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice.catch(() => null); if (r && r.outcome === "accepted") installEvt = null; render(); return; }
+  if (isIOS) toast("Sur iPhone : touche Partager, puis « Sur l'écran d'accueil ».");
+};
 
 /* ---------- démarrage ---------- */
 fetch("/strings.json").then((r) => r.json()).then((s) => { STR = s; render(); }).catch(() => {});
