@@ -946,6 +946,51 @@
    "artZoom": 1,
    "artX": 0,
    "artY": -0.4
+  },
+  {
+   "id": "hm-022",
+   "lang": "fr",
+   "kind": "monster",
+   "name": "Szayel Aporro Granz - Le Huitième Espada",
+   "nameColor": "auto",
+   "frame": "effect",
+   "attribute": "DARK",
+   "mtype": "Fiend",
+   "level": 1,
+   "pendulum": false,
+   "hasEffect": true,
+   "abilities": {
+    "tuner": false,
+    "flip": false,
+    "gemini": false,
+    "spirit": false,
+    "toon": false,
+    "union": true
+   },
+   "arrows": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "atk": "500",
+   "def": "1000",
+   "stType": "normal",
+   "text": "Si cette carte est Invoquée Normalement ou Spécialement : vous pouvez ajouter 1 « Laboratoire de l'Octava Espada - Modification Organique » depuis votre Deck à votre main. Une fois par tour : vous pouvez cibler 1 autre monstre face recto que vous contrôlez ; équipez-le de cette carte, OU déséquipez cette carte et Invoquez-la Spécialement. Le monstre équipé de cette carte est aussi traité comme un monstre « Espada ». Si le monstre équipé devait être détruit au combat ou par un effet de carte, détruisez cette carte à la place. Vous ne pouvez utiliser le 1er effet de « Szayel Aporro Granz - Le Huitième Espada » qu'une fois par tour.",
+   "pendText": "",
+   "scaleL": 4,
+   "scaleR": 4,
+   "setId": "HMUN-FR022",
+   "passcode": "",
+   "copyright": "Hueco Mundo · fan-made",
+   "art": "",
+   "artZoom": 1,
+   "artX": 0,
+   "artY": 0
   }
  ]
 }
