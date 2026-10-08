@@ -551,8 +551,14 @@ function viewDuel() {
     <button class="banished" data-a="pile" data-c="${t}" data-w="ban">BANNIES <span>${F[t].ban.filter(Boolean).length}</span></button>
     <span class="hand-count">MAIN <b>${F[t].hand.filter(Boolean).length}</b></span>${top ? "" : `<div class="arena-turn">${turnInfoOf()}</div>`}</div>`;
 
+  const tilt = !S.flat;
+  const lpBox = (t, side) => `<div class="hud-player ${side}">
+    <div class="hud-bar" data-lp="${t}"><i style="width:${Math.max(0, Math.min(100, F[t].lp / 80))}%"></i><strong>${F[t].lp.toLocaleString("fr-FR")}</strong></div>
+    <div class="hud-meta"><span class="presence ${t === me ? "" : "rival"}"></span><b>${esc(pname(t))}</b>${turnPl === t ? `<em>SON TOUR</em>` : ""}
+      <span class="hud-chip">MAIN ${F[t].hand.filter(Boolean).length}</span><button class="hud-chip" data-a="pile" data-c="${t}" data-w="ban">BANNIES ${F[t].ban.filter(Boolean).length}</button></div></div>`;
+  const hud = `<div class="duel-hud">${lpBox(me, "me")}<div class="hud-turn"><small>TOUR</small><strong>${turnNo || 1}</strong><em>${esc(phaseIdx >= 0 ? PHASES[phaseIdx][1].toUpperCase() : "")}</em></div>${lpBox(op, "op")}</div>`;
   const board = `<div class="arena-panel" aria-label="Terrain">
-    ${player(op, true)}
+    ${tilt ? hud : player(op, true)}
     <div class="table-hand opponent-cards">${oppHand}</div>
     <div class="compact-board">
       <div class="board-row">${sRow(op, true)}</div>
@@ -561,7 +567,7 @@ function viewDuel() {
       <div class="board-row">${mRow(me, false)}</div>
       <div class="board-row">${sRow(me, false)}</div>
     </div>
-    ${player(me, false)}
+    ${tilt ? "" : player(me, false)}
     <div class="table-hand player-cards" aria-label="Ta main">${hand || `<span class="muted small">Main vide</span>`}</div>
   </div>`;
 
