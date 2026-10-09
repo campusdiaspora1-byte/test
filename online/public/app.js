@@ -224,7 +224,8 @@ async function send(response) {
 function autoAnswer() {
   const p = S.view && S.view.duel && S.view.duel.prompt;
   if (!p || S.busy) return;
-  if (p.type === MSG.SELECT_CHAIN && !p.selects.length && !p.forced) send({ type: RESP.SELECT_CHAIN, index: null });
+  const mode = (S.view.seat && S.view.players[S.view.seat] && S.view.players[S.view.seat].chain) || "normal";
+  if (p.type === MSG.SELECT_CHAIN && !p.forced && (mode === "ignore" || (mode === "normal" && !p.selects.length))) send({ type: RESP.SELECT_CHAIN, index: null });
 }
 
 /* ---------- decks ---------- */
@@ -552,6 +553,14 @@ function viewDuel() {
     <span class="hand-count">MAIN <b>${F[t].hand.filter(Boolean).length}</b></span>${top ? "" : `<div class="arena-turn">${turnInfoOf()}</div>`}</div>`;
 
   const tilt = !S.flat;
+  // Boutons de phase au milieu du terrain, comme EDOPro : BP / M2 à gauche, EP à droite
+  const RR = (r) => `data-a="raw" data-r='${JSON.stringify(r)}'`;
+  const phaseBtn = (side) => {
+    let b = null;
+    if (p && !S.busy && p.type === MSG.SELECT_IDLECMD) b = side === "left" ? (p.to_bp ? ["B P", "Battle Phase", { type: RESP.SELECT_IDLECMD, action: 6, index: null }] : null) : p.to_ep ? ["E P", "Fin du tour", { type: RESP.SELECT_IDLECMD, action: 7, index: null }] : null;
+    if (p && !S.busy && p.type === MSG.SELECT_BATTLECMD) b = side === "left" ? (p.to_m2 ? ["M 2", "Main Phase 2", { type: RESP.SELECT_BATTLECMD, action: 2, index: null }] : null) : p.to_ep ? ["E P", "Fin du tour", { type: RESP.SELECT_BATTLECMD, action: 3, index: null }] : null;
+    return b ? `<button class="board-zone blank phase-btn" ${RR(b[2])} aria-label="${b[1]}" title="${b[1]}">${b[0]}</button>` : `<div class="board-zone blank"></div>`;
+  };
   const lpBox = (t, side) => `<div class="hud-player ${side}">
     <div class="hud-bar" data-lp="${t}"><i style="width:${Math.max(0, Math.min(100, F[t].lp / 80))}%"></i><strong>${F[t].lp.toLocaleString("fr-FR")}</strong></div>
     <div class="hud-meta"><span class="presence ${t === me ? "" : "rival"}"></span><b>${esc(pname(t))}</b>${turnPl === t ? `<em>SON TOUR</em>` : ""}
@@ -563,7 +572,7 @@ function viewDuel() {
     <div class="compact-board">
       <div class="board-row">${sRow(op, true)}</div>
       <div class="board-row">${mRow(op, true)}</div>
-      <div class="board-row">${pile(op, "ban")}<div class="board-zone blank"></div>${emz(0)}<div class="board-zone blank versus-chip">${icon("swords", 17)}<span>YOUR OWN DUEL</span></div>${emz(1)}<div class="board-zone blank"></div>${pile(me, "ban")}</div>
+      <div class="board-row">${pile(op, "ban")}${phaseBtn("left")}${emz(0)}<div class="board-zone blank versus-chip">${icon("swords", 17)}<span>YOUR OWN DUEL</span></div>${emz(1)}${phaseBtn("right")}${pile(me, "ban")}</div>
       <div class="board-row">${mRow(me, false)}</div>
       <div class="board-row">${sRow(me, false)}</div>
     </div>
@@ -574,19 +583,26 @@ function viewDuel() {
   // Tiroir de gauche : tour et phases, chaîne, journal et chat. Fermé par défaut pour garder le terrain en entier sous les yeux.
   const feed = S.log.slice(-150).map((e) => logLine(e, me, pname)).filter(Boolean);
   const unread = Math.max(0, S.log.length - (S.seenLog || 0));
-  if (S.drawer) S.seenLog = S.log.length;
+  if (S.drawer || S.sideTab === "log") S.seenLog = S.log.length;
   const turnInfo = turnInfoOf();
-  const sidebar = `<aside class="game-drawer ${S.drawer ? "open" : ""}" aria-label="Journal du duel" ${S.drawer ? "" : "inert"}>
-    <div class="side-card turn-card">
-      <div class="turn-heading"><div><strong>TOUR ${turnNo || 1}</strong> <span>· ${esc(turnPl == null ? "" : pname(turnPl))}</span></div><button class="side-ghost" data-a="drawer" aria-label="Fermer le journal">${icon("x", 14)}</button></div>
-      <div class="horizontal-phases">${PHASES.map(([b, n], i) => `<span class="${i === phaseIdx ? "active" : i < phaseIdx ? "done" : ""}">${n.toUpperCase()}</span>`).join("")}</div>
-      ${v.seat && !d.ended ? `<button class="side-ghost danger-action" data-a="surrender">${S.armed === "surrender" ? "CONFIRMER L'ABANDON ?" : "ABANDONNER"}</button>` : ""}
+  const myMode = (v.seat && v.players[v.seat] && v.players[v.seat].chain) || "normal";
+  const tabs = [["card", "Carte"], ["log", "Journal"], ["chat", "Chat"]].filter(([k]) => k !== "chat" || !(v.players.B && v.players.B.bot));
+  const tab = tabs.some(([k]) => k === S.sideTab) ? S.sideTab : "card";
+  const body = tab === "card" ? previewText(S.preview)
+    : tab === "log" ? `<div class="journal-feed" id="log">${feed.join("")}</div>`
+    : `<div class="chat-box">${(v.chat || []).slice(-30).map((c) => `<div class="chat-line"><b style="color:${v.teams[c.seat] === me ? "var(--green)" : "#dd6965"}">${esc(v.players[c.seat] ? v.players[c.seat].name : c.seat)}</b> ${esc(c.t)}</div>`).join("") || `<p class="muted small">Aucun message.</p>`}</div>
+       ${v.seat ? `<form class="chat-entry" data-a="chat"><input id="chatin" maxlength="200" placeholder="Message à ton adversaire…" aria-label="Message"><button>ENVOYER</button></form>` : ""}`;
+  const sidebar = `<aside class="game-drawer ${S.drawer ? "open" : ""}" aria-label="Carte, journal et options">
+    <div class="preview-card" id="preview">${previewImg(S.preview)}</div>
+    <div class="panel-buttons">
+      <button class="side-ghost" data-a="leave">${icon("chevron", 14)} QUITTER</button>
+      ${v.seat && !d.ended ? `<button class="side-ghost danger-action" data-a="surrender">${S.armed === "surrender" ? "CONFIRMER ?" : "ABANDONNER"}</button>` : d.ended && v.seat ? `<button class="side-ghost" data-a="rematch">REVANCHE</button>` : ""}
+      <button class="side-ghost ${S.flat ? "" : "on"}" data-a="tilt">${S.flat ? "VUE 3D" : "VUE À PLAT"}</button>
+      <button class="side-ghost drawer-close" data-a="drawer" aria-label="Fermer">${icon("x", 14)}</button>
     </div>
-    <div class="side-card journal-card"><div class="journal-heading"><strong>JOURNAL DU DUEL</strong><span>EN DIRECT</span></div>
-      <div class="journal-feed" id="log">${feed.join("")}</div>
-      ${(v.chat || []).slice(-6).map((c) => `<div class="chat-line"><b style="color:${v.teams[c.seat] === me ? "var(--green)" : "#dd6965"}">${esc(v.players[c.seat] ? v.players[c.seat].name : c.seat)}</b> ${esc(c.t)}</div>`).join("")}
-      ${v.seat && !(v.players.B && v.players.B.bot) ? `<form class="chat-entry" data-a="chat"><input id="chatin" maxlength="200" placeholder="Message à ton adversaire…" aria-label="Message"><button>ENVOYER</button></form>` : ""}
-    </div>
+    ${v.seat ? `<div class="chain-modes" role="radiogroup" aria-label="Chaînes">${[["ignore", "Ignorer les chaînes", "Ne jamais te proposer de chaîner (sauf effet obligatoire)"], ["always", "Toujours chaîner", "Te demander à chaque occasion, même sans carte à activer"], ["normal", "Chaîne normale", "Te demander seulement quand une carte peut répondre"]].map(([m, n, t]) => `<button role="radio" aria-checked="${myMode === m}" class="${myMode === m ? "on" : ""}" data-a="chainmode" data-m="${m}" title="${t}">${n}</button>`).join("")}</div>` : ""}
+    <div class="panel-tabs" role="tablist">${tabs.map(([k, n]) => `<button role="tab" aria-selected="${tab === k}" class="${tab === k ? "on" : ""}" data-a="sidetab" data-t="${k}">${n}${k === "log" && unread && tab !== "log" ? ` <b>${unread > 99 ? "99+" : unread}</b>` : ""}</button>`).join("")}</div>
+    <div class="panel-body" id="panel-body">${body}</div>
   </aside>
   <nav class="game-rail" aria-label="Outils du duel">
     <button class="rail-btn ${S.drawer ? "on" : ""}" data-a="drawer" aria-label="Journal du duel" aria-expanded="${!!S.drawer}">${icon("cards", 18)}<span>JOURNAL</span>${unread && !S.drawer ? `<b>${unread > 99 ? "99+" : unread}</b>` : ""}</button>
@@ -618,6 +634,31 @@ function viewDuel() {
       <button class="primary-action" data-a="landscape">PLEIN ÉCRAN EN PAYSAGE</button><button class="ghost-action" data-a="portraitok">Jouer quand même en portrait</button></div></div>` : ""}</section>`;
 }
 
+// Aperçu de carte du panneau de gauche (comme EDOPro) : la dernière carte survolée ou touchée
+function previewImg(code) {
+  return code ? `<div class="card">${face(code)}</div>` : `<div class="preview-empty">${icon("cards", 30)}<span>Survole ou touche une carte pour la voir ici</span></div>`;
+}
+function previewText(code) {
+  const t = code && text(code);
+  if (!code) return `<p class="muted small">Survole ou touche une carte : son texte s'affiche ici.</p>`;
+  return `<div class="preview-text"><strong>${esc(cname(code))}</strong><span>${esc(typeLine(t))}</span><p>${esc(t ? t.desc : "")}</p></div>`;
+}
+function setPreview(code) {
+  code = +code || 0;
+  if (!code || code === S.preview) return;
+  S.preview = code;
+  const img = $("#preview"); if (img) img.innerHTML = previewImg(code);
+  const body = $("#panel-body"); if (body && (S.sideTab || "card") === "card") body.innerHTML = previewText(code);
+}
+document.addEventListener("mouseover", (e) => {
+  const im = e.target.closest && e.target.closest(".yod-game img[data-code]");
+  if (im && !im.closest("#preview")) setPreview(im.dataset.code);
+});
+document.addEventListener("pointerdown", (e) => {
+  const im = e.target.closest && e.target.closest(".yod-game img[data-code]");
+  if (im && !im.closest("#preview")) setPreview(im.dataset.code);
+}, true);
+
 function viewEnd(d, me, pname) {
   const won = d.winner === me;
   return `<div class="side-card end-card"><h2 class="${d.winner == null ? "" : won ? "win" : "lose"}">${d.winner == null ? "ÉGALITÉ" : won ? "VICTOIRE" : "DÉFAITE"}</h2>
@@ -627,6 +668,7 @@ function viewEnd(d, me, pname) {
 
 function viewFocus(acts) {
   const [c, l, s] = S.focus.split(":").map(Number);
+  setTimeout(() => { const F0 = S.view && S.view.duel && S.view.duel.field[c]; const cc = F0 && (l === LOC.HAND ? F0.hand[s] : l === LOC.MZONE ? F0.m[s] : l === LOC.SZONE ? F0.s[s] : null); if (cc && cc.code) setPreview(cc.code); }, 0);
   const F = S.view.duel.field[c];
   const card = l === LOC.HAND ? F.hand[s] : l === LOC.MZONE ? F.m[s] : l === LOC.SZONE ? F.s[s] : l === LOC.GRAVE ? F.gy[s] : l === LOC.REMOVED ? F.ban[s] : l === LOC.EXTRA ? (F.extra || [])[s] : null;
   const code = card ? card.code : 0;
@@ -925,6 +967,8 @@ const ACT = {
   copylink() { copy($("#rlink").value, $("#rlink")); },
   copycode() { copy(location.origin + "/?salle=" + S.code); },
   drawer() { S.drawer = !S.drawer; render(); if (S.drawer) { const lg = $("#log"); if (lg) lg.scrollTop = lg.scrollHeight; } },
+  sidetab(el) { S.sideTab = el.dataset.t; render(); if (S.sideTab === "log") { const lg = $("#log"); if (lg) lg.scrollTop = lg.scrollHeight; } },
+  async chainmode(el) { try { await api({ action: "chain", code: S.code, token: S.token, mode: el.dataset.m }); await refresh(true); } catch (e) { toast(e.message); } },
   tilt() { S.flat = !S.flat; store.set("flat", S.flat); render(); },
   endseen() { S.endSeen = true; render(); },
   endshow() { S.endSeen = false; render(); },

@@ -120,8 +120,10 @@ function startDuel(d) {
 // Comme EDOPro : quand un joueur ne peut rien chaîner, on passe pour lui sans attendre son navigateur.
 // Contre le bot, on le fait jouer ici jusqu'à ce que ce soit au joueur (sur la partie déjà ouverte, sans tout rejouer).
 // Au-delà de `budget` ms, on s'arrête : la suite sera jouée à la prochaine requête (roomView).
-const nothingToChain = (p) => p && p.type === 16 /* SELECT_CHAIN */ && !p.selects.length && !p.forced;
 const botTeam = (d) => { const s = SEATS.find((x) => d.players[x] && d.players[x].bot); return s && d.game ? d.game.teams[s] : null; };
+// Modes de chaîne (comme EDOPro) : « normal » ne demande que si une carte peut répondre, « ignore » ne demande jamais
+// (sauf obligation), « always » demande à chaque occasion, même sans rien à activer.
+const chainMode = (d, team) => { const s = SEATS.find((x) => d.game.teams[x] === team); return (s && d.players[s] && d.players[s].chain) || "normal"; };
 const plain = (x) => JSON.parse(toJSON(x)); // réponses stockées en JSON (pas de BigInt)
 // Le bot joue une action à la fois (une Invocation, une activation, une attaque…) : la page redemande la suite
 // après un court délai, pour que le joueur voie chaque coup et ses animations.
@@ -135,8 +137,9 @@ async function settle(d, r, budget = 18000) {
     const p = r.pending, team = p.player;
     let resp;
     if (team === bt && acted && isDecision(p)) break; // pause : le coup suivant attendra la prochaine requête
+    const mode = chainMode(d, team);
     if (team === bt) { resp = botAnswer(r, team, memo); if (resp && isVisible(p, resp)) acted = true; }
-    else if (nothingToChain(p)) resp = { type: 8, index: null };
+    else if (p.type === 16 && !p.forced && (mode === "ignore" ? true : mode === "always" ? false : !p.selects.length)) resp = { type: 8, index: null };
     else break;
     if (!resp || !advance(r, resp)) { // réponse refusée : comme WindBot après un « retry », il passe
       resp = pass(p);
@@ -147,6 +150,15 @@ async function settle(d, r, budget = 18000) {
   d.game.waiting = r.ended || !r.pending ? null : r.pending.player; // à qui de répondre (évite une relecture pour le savoir)
   if (r.ended) { d.status = "ended"; d.game.winner = r.winner; }
   r.close();
+}
+
+export async function setChainMode(code, token, mode) {
+  code = String(code || "").toUpperCase();
+  const room = await load(code), d = room.data, seat = seatOf(room, token);
+  if (!["normal", "ignore", "always"].includes(mode)) fail(400, "Mode de chaîne inconnu.");
+  d.players[seat].chain = mode;
+  if (d.status === "duel") { const r = await replay(d.game); await settle(d, r); } // « ignorer » : passe tout de suite la question en cours
+  return { version: await save(code, room) };
 }
 
 export async function respond(code, token, response) {
@@ -200,7 +212,7 @@ export async function roomView(code, token, from = 0, knownVersion = 0) {
   }
   if (knownVersion && knownVersion === room.version) return { code, version: room.version, same: true }; // rien de neuf : pas de relecture
   const seat = SEATS.find((s) => token && d.players[s] && d.players[s].token === token) || null;
-  const players = Object.fromEntries(SEATS.map((s) => [s, d.players[s] ? { name: d.players[s].name, bot: !!d.players[s].bot, ready: !!d.players[s].deck, deckName: d.players[s].deck && d.players[s].deck.name } : null]));
+  const players = Object.fromEntries(SEATS.map((s) => [s, d.players[s] ? { name: d.players[s].name, bot: !!d.players[s].bot, chain: d.players[s].chain || "normal", ready: !!d.players[s].deck, deckName: d.players[s].deck && d.players[s].deck.name } : null]));
   const out = { code, version: room.version, status: d.status, seat, players, chat: d.chat || [], format: formatInfo(formatOf(d.format)),
     botTurn: d.status === "duel" && botTeam(d) != null && d.game.waiting === botTeam(d) };
   if (d.game) {
