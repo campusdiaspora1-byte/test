@@ -31,7 +31,7 @@ Extension EDOPro de l'archétype **Hueco Mundo** (26 cartes, HMUN-FR001 à FR026
 | Code | Carte |
 |---|---|
 | 711000001 à 711000026 | HMUN-FR001 à FR026, dans le même ordre que le classeur |
-| 711000027 | Jeton Fracción (pas d'illustration, EDOPro affiche le dos par défaut) |
+| 711000027 | Jeton Fracción (illustration : HMUN-FR027, recadrage de Las Tres Bestias) |
 
 ## Pour les développeurs
 

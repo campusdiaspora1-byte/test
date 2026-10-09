@@ -104,6 +104,8 @@ def main():
                      "race": race, "attack": atk, "defense": df, "lscale": 0, "rscale": 0, "link_marker": df if ty & T["LINK"] else 0, "name": c["name"]})
     tok = BASE + 27  # Jeton Fracción : Aqua/EAU/Niveau 1/500/500
     db.execute("insert into datas values(?,?,?,?,?,?,?,?,?,?,?)", (tok, 3, 0, 0, T["MONSTER"] | T["NORMAL"] | T["TOKEN"], 500, 500, 1, RACE["Aqua"], ATTR["WATER"], 0))
+    tok_png = ARCH / "cartes" / "HMUN-FR027.png"  # illustration du Jeton (même atelier que les autres cartes)
+    if tok_png.exists(): Image.open(tok_png).convert("RGB").resize((400, 580)).save(out / "pics" / f"{tok}.jpg", quality=88)
     db.execute("insert into texts values(?,?,?," + ",".join("?" * 16) + ")", (tok, "Jeton Fracción", "Ce Jeton est Invoqué par l'effet de « Las Tres Bestias - Fracciones de la Chimère ».", *[""] * 16))
     test.append({"code": tok, "alias": 0, "setcodes": [], "type": T["MONSTER"] | T["NORMAL"] | T["TOKEN"], "level": 1, "attribute": ATTR["WATER"],
                  "race": RACE["Aqua"], "attack": 500, "defense": 500, "lscale": 0, "rscale": 0, "link_marker": 0, "name": "Jeton Fracción"})
