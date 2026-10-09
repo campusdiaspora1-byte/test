@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import handler from "../api/room.js";
 
 const PUB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "public");
-const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json", ".jpg": "image/jpeg", ".png": "image/png", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json" };
+const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json", ".jpg": "image/jpeg", ".png": "image/png", ".svg": "image/svg+xml", ".webp": "image/webp", ".webmanifest": "application/manifest+json" };
 const port = +(process.env.PORT || 3000);
 
 createServer((req, res) => {
